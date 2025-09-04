@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Animated,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 import NadaCharacter from "../../components/NadaCharacter";
 import NadaLogo from "../../components/NadaLogo";
 import SpeechBubble from "../../components/SpeechBubble";
+import { NadaTheme } from "../../constants/NadaTheme";
 
 const NadaHomeScreen = () => {
   // Fix: useMemo for Animated.Value to avoid changing reference every render
@@ -227,8 +227,12 @@ const NadaHomeScreen = () => {
   // Bottom navigation removed
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={NadaTheme.colors.background}
+        translucent={false}
+      />
 
       {/* Header */}
       <View style={styles.header}>
@@ -239,7 +243,7 @@ const NadaHomeScreen = () => {
       </View>
 
       {/* Main Content - Now Scrollable */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.mainContent}
         showsVerticalScrollIndicator={false}
@@ -259,19 +263,23 @@ const NadaHomeScreen = () => {
           <Text style={styles.motivateText}>Actually motivate me 🙄</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: NadaTheme.colors.background,
+    width: "100%",
+    height: "100%",
+    position: "relative",
   },
-  
+
   scrollContainer: {
     flex: 1,
-    width: '100%',
+    width: "100%",
+    backgroundColor: NadaTheme.colors.background,
   },
 
   header: {
@@ -304,7 +312,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     paddingTop: 15,
     paddingBottom: 30, // Reduced padding since the nav bar is removed
-    minHeight: '100%', // Ensures content fills the ScrollView even if content is short
+    minHeight: "100%", // Ensures content fills the ScrollView even if content is short
+    backgroundColor: NadaTheme.colors.background, // Ensure consistent background color
   },
 
   speechBubble: {
