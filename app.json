@@ -9,14 +9,16 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.MyApp"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1a1a2e"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.MyApp"
     },
     "web": {
       "bundler": "metro",
@@ -34,10 +36,20 @@
           "backgroundColor": "#1a1a2e"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "react-native-google-mobile-ads": {
+      "android_app_id": "nadaca-app-pub-1609492440808781~3500829830",
+      "ios_app_id": "nadaca-app-pub-1609492440808781~3500829830"
     }
   }
 }

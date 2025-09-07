@@ -86,17 +86,19 @@ export default function SignUpScreen() {
     setFieldErrors({}); // Clear field-specific errors
 
     console.log("Starting sign-up process with:", { emailAddress });
-    
+
     // Set a timeout to prevent infinite loading state
     const timeoutId = setTimeout(() => {
       if (loading) {
         console.log("Sign-up process timed out");
         setLoading(false);
         setErrorMessage("Request timed out. Please try again.");
-        setNadaMessage("Even my patience has limits. The request took too long.");
+        setNadaMessage(
+          "Even my patience has limits. The request took too long."
+        );
       }
     }, 15000); // 15 seconds timeout
-    
+
     // Client-side validation for empty fields
     if (!emailAddress.trim()) {
       setFieldErrors({
@@ -142,7 +144,8 @@ export default function SignUpScreen() {
           break;
         case "too_weak":
           setFieldErrors({
-            password: "Password should contain letters, numbers, and special characters.",
+            password:
+              "Password should contain letters, numbers, and special characters.",
           });
           setErrorMessage("Your password is too weak. Mix in some variety.");
           setNadaMessage(getValidationErrorMessage("password_too_weak"));
@@ -166,11 +169,15 @@ export default function SignUpScreen() {
         password,
       });
 
-      console.log("Clerk signUp.create successful, preparing email verification");
+      console.log(
+        "Clerk signUp.create successful, preparing email verification"
+      );
       // Send user an email with verification code
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
-      console.log("Email verification prepared, setting pendingVerification to true");
+      console.log(
+        "Email verification prepared, setting pendingVerification to true"
+      );
       // Set 'pendingVerification' to true to display second form
       // and capture OTP code
       setPendingVerification(true);
@@ -187,7 +194,7 @@ export default function SignUpScreen() {
         // Extract field-specific errors
         err.errors.forEach((error: any) => {
           console.log("Processing error:", error);
-          
+
           if (
             error.meta?.paramName === "emailAddress" ||
             error.meta?.paramName === "identifier"
@@ -197,14 +204,18 @@ export default function SignUpScreen() {
             newFieldErrors.password = error.message;
           } else if (error.code === "form_param_format_invalid") {
             // Handle specific Clerk validation errors
-            if (error.meta?.name === "email_address" || error.meta?.name === "identifier") {
+            if (
+              error.meta?.name === "email_address" ||
+              error.meta?.name === "identifier"
+            ) {
               newFieldErrors.email = "Email address format is invalid";
             } else {
               generalError = error.message || "Invalid format";
             }
           } else if (error.code === "not_allowed_access") {
             if (error.meta?.name === "email_address") {
-              newFieldErrors.email = "Email contains invalid characters ('+', '=', '#' not allowed)";
+              newFieldErrors.email =
+                "Email contains invalid characters ('+', '=', '#' not allowed)";
             } else {
               generalError = error.message;
             }
@@ -419,10 +430,7 @@ export default function SignUpScreen() {
             </View>
 
             <TouchableOpacity
-              style={[
-                authStyles.button,
-                loading ? { opacity: 0.7 } : null
-              ]}
+              style={[authStyles.button, loading ? { opacity: 0.7 } : null]}
               onPress={onSignUpPress}
               disabled={loading}
             >

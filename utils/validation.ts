@@ -5,7 +5,7 @@
 
 /**
  * Validates an email address with Clerk's specific requirements
- * 
+ *
  * @param email - The email address to validate
  * @returns boolean - Whether the email is valid
  */
@@ -24,8 +24,12 @@ export const validateEmail = (email: string): boolean => {
   }
 
   // Check for disallowed characters in the local part
-  const [localPart] = trimmedEmail.split('@');
-  if (localPart.includes('+') || localPart.includes('=') || localPart.includes('#')) {
+  const [localPart] = trimmedEmail.split("@");
+  if (
+    localPart.includes("+") ||
+    localPart.includes("=") ||
+    localPart.includes("#")
+  ) {
     return false;
   }
 
@@ -34,7 +38,7 @@ export const validateEmail = (email: string): boolean => {
 
 /**
  * Checks if a password meets security requirements as per Clerk's guidelines.
- * 
+ *
  * @param password - The password to validate
  * @returns object - Result with isValid boolean and optional reason for failure
  */
@@ -51,13 +55,20 @@ export const validatePasswordSecurity = (
 
   // Check for common password patterns
   const commonPasswords = [
-    "password", "12345678", "qwerty", "letmein", 
-    "welcome", "admin", "123456789", "1234567", 
-    "password1", "abc123"
+    "password",
+    "12345678",
+    "qwerty",
+    "letmein",
+    "welcome",
+    "admin",
+    "123456789",
+    "1234567",
+    "password1",
+    "abc123",
   ];
 
   const lowercasePassword = password.toLowerCase();
-  if (commonPasswords.some(common => lowercasePassword === common)) {
+  if (commonPasswords.some((common) => lowercasePassword === common)) {
     return { isValid: false, reason: "too_common" };
   }
 
