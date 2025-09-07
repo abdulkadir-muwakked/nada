@@ -15,13 +15,13 @@ const USE_TEST_ADS = __DEV__; // Automatically use test ads in development
 const AD_UNIT_IDS = {
   BANNER: USE_TEST_ADS 
     ? TestIds.BANNER 
-    : 'nadaca-app-pub-1609492440808781/9451994669',
+    : 'ca-app-pub-1609492440808781/9451994669',
   INTERSTITIAL: USE_TEST_ADS 
     ? TestIds.INTERSTITIAL 
-    : 'nadaca-app-pub-1609492440808781/9451994669',
+    : 'ca-app-pub-1609492440808781/9451994669',
   REWARDED: USE_TEST_ADS 
     ? TestIds.REWARDED 
-    : 'nadaca-app-pub-1609492440808781/9451994669',
+    : 'ca-app-pub-1609492440808781/9451994669',
 };
 
 /**

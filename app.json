@@ -48,8 +48,8 @@
       "typedRoutes": true
     },
     "react-native-google-mobile-ads": {
-      "android_app_id": "nadaca-app-pub-1609492440808781~3500829830",
-      "ios_app_id": "nadaca-app-pub-1609492440808781~3500829830"
+      "android_app_id": "ca-app-pub-1609492440808781~3500829830",
+      "ios_app_id": "ca-app-pub-1609492440808781~3500829830"
     }
   }
 }

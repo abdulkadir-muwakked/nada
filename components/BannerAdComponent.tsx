@@ -5,7 +5,7 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 // Production ad unit ID
 const BANNER_AD_UNIT_ID = __DEV__ 
   ? TestIds.BANNER 
-  : 'nadaca-app-pub-1609492440808781/9451994669';
+  : 'ca-app-pub-1609492440808781/9451994669';
 
 interface BannerAdComponentProps {
   unitId?: string;
