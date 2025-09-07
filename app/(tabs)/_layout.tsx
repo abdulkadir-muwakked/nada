@@ -13,7 +13,7 @@ export default function Layout() {
         tabBarHideOnKeyboard: true,
       }}
     >
-      <Tabs.Screen name="home" />
+      <Tabs.Screen name="index" />
     </Tabs>
   );
 }

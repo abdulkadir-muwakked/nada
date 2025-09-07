@@ -2,7 +2,48 @@ import { useSignUp } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import * as React from "react";
 import {
-  KeyboardAvoidingView,
+  Ke    // Password length and complexity validation
+    if (password.length < 8) {
+      setFieldErrors({
+        password: "Password must be at least 8 characters.",
+      });
+      setErrorMessage("Your password is too short. Try harder.");
+      setNadaMessage(getValidationErrorMessage("password_too_short"));
+      setLoading(false);
+      return;
+    }
+    
+    // Check for common password patterns that might be easily breached
+    const commonPasswords = [
+      "password", "12345678", "qwerty", "letmein", "welcome", 
+      "admin", "123456789", "1234567", "password1", "abc123"
+    ];
+    
+    const lowercasePassword = password.toLowerCase();
+    if (commonPasswords.some(common => lowercasePassword.includes(common))) {
+      setFieldErrors({
+        password: "Password is too common or easily guessed.",
+      });
+      setErrorMessage("Your password is too obvious. Try something more secure.");
+      setNadaMessage(getValidationErrorMessage("password_compromised"));
+      setLoading(false);
+      return;
+    }
+    
+    // Check if password contains variety of character types (more secure)
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!(hasLetter && (hasNumber || hasSpecial))) {
+      setFieldErrors({
+        password: "Password should contain letters and numbers or special characters.",
+      });
+      setErrorMessage("Your password is too weak. Mix in some numbers or symbols.");
+      setNadaMessage(getValidationErrorMessage("password_too_weak"));
+      setLoading(false);
+      return;
+    }dingView,
   Platform,
   ScrollView,
   StatusBar,
@@ -26,10 +67,6 @@ import {
 } from "../../constants/AuthMessages";
 import { NadaTheme } from "../../constants/NadaTheme";
 import { useGoogleAuth } from "../../utils/oauth";
-import {
-  validateEmail,
-  validatePasswordSecurity,
-} from "../../utils/validation";
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -76,7 +113,40 @@ export default function SignUpScreen() {
     }
   };
 
-  // Using imported validateEmail from utils/validation.ts
+  // Function to validate email format with a more robust approach
+  const validateEmail = (email: string): boolean => {
+    // Trim the email first to remove any accidental whitespace
+    const trimmedEmail = email.trim();
+    
+    if (!trimmedEmail || trimmedEmail.length === 0) {
+      return false;
+    }
+    
+    // More comprehensive validation that aligns with Clerk's requirements
+    // This is a simplified version of the RFC 5322 standard
+    // It checks for proper domain format and common email patterns
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    
+    // First test basic structure
+    if (!emailRegex.test(trimmedEmail)) {
+      return false;
+    }
+    
+    // Additional check to ensure domain has at least one dot and valid TLD length
+    const parts = trimmedEmail.split('@');
+    const domain = parts[1];
+    
+    if (!domain.includes('.')) {
+      return false;
+    }
+    
+    const tld = domain.split('.').pop() || '';
+    if (tld.length < 2) {
+      return false;
+    }
+    
+    return true;
+  };
 
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
@@ -85,18 +155,6 @@ export default function SignUpScreen() {
     setErrorMessage(null); // Clear previous errors
     setFieldErrors({}); // Clear field-specific errors
 
-    console.log("Starting sign-up process with:", { emailAddress });
-    
-    // Set a timeout to prevent infinite loading state
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.log("Sign-up process timed out");
-        setLoading(false);
-        setErrorMessage("Request timed out. Please try again.");
-        setNadaMessage("Even my patience has limits. The request took too long.");
-      }
-    }, 15000); // 15 seconds timeout
-    
     // Client-side validation for empty fields
     if (!emailAddress.trim()) {
       setFieldErrors({
@@ -108,7 +166,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    // Client-side validation for email format using the utility function
+    // Client-side validation for email format
+    // Only check if email is not empty
     if (emailAddress.trim() && !validateEmail(emailAddress)) {
       setFieldErrors({
         email: "Email address must be a valid email address.",
@@ -119,64 +178,66 @@ export default function SignUpScreen() {
       return;
     }
 
-    // Password validation using the utility function
-    const passwordCheck = validatePasswordSecurity(password);
-    if (!passwordCheck.isValid) {
-      // Set appropriate error message based on the validation result
-      switch (passwordCheck.reason) {
-        case "too_short":
-          setFieldErrors({
-            password: "Password must be at least 8 characters.",
-          });
-          setErrorMessage("Your password is too short. Try harder.");
-          setNadaMessage(getValidationErrorMessage("password_too_short"));
-          break;
-        case "too_common":
-          setFieldErrors({
-            password: "Password is too common or easily guessed.",
-          });
-          setErrorMessage(
-            "Your password is too obvious. Try something more secure."
-          );
-          setNadaMessage(getValidationErrorMessage("password_compromised"));
-          break;
-        case "too_weak":
-          setFieldErrors({
-            password: "Password should contain letters, numbers, and special characters.",
-          });
-          setErrorMessage("Your password is too weak. Mix in some variety.");
-          setNadaMessage(getValidationErrorMessage("password_too_weak"));
-          break;
-        default:
-          setFieldErrors({
-            password: "Password doesn't meet security requirements.",
-          });
-          setErrorMessage("Your password is inadequate. Fix it.");
-          setNadaMessage(getValidationErrorMessage("password_too_weak"));
-      }
+    // Password length and complexity validation
+    if (password.length < 8) {
+      setFieldErrors({
+        password: "Password must be at least 8 characters.",
+      });
+      setErrorMessage("Your password is too short. Try harder.");
+      setNadaMessage(getValidationErrorMessage("password_too_short"));
+      setLoading(false);
+      return;
+    }
+    
+    // Check for common password patterns that might be easily breached
+    const commonPasswords = [
+      "password", "12345678", "qwerty", "letmein", "welcome", 
+      "admin", "123456789", "1234567", "password1", "abc123"
+    ];
+    
+    const lowercasePassword = password.toLowerCase();
+    if (commonPasswords.some(common => lowercasePassword.includes(common))) {
+      setFieldErrors({
+        password: "Password is too common or easily guessed.",
+      });
+      setErrorMessage("Your password is too obvious. Try something more secure.");
+      setNadaMessage(getValidationErrorMessage("password_compromised"));
+      setLoading(false);
+      return;
+    }
+    
+    // Check if password contains variety of character types (more secure)
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!(hasLetter && (hasNumber || hasSpecial))) {
+      setFieldErrors({
+        password: "Password should contain letters and numbers or special characters.",
+      });
+      setErrorMessage("Your password is too weak. Mix in some numbers or symbols.");
+      setNadaMessage(getValidationErrorMessage("password_too_weak"));
       setLoading(false);
       return;
     }
 
     // Start sign-up process using email and password provided
     try {
-      console.log("Calling Clerk signUp.create");
       await signUp.create({
         emailAddress,
         password,
       });
 
-      console.log("Clerk signUp.create successful, preparing email verification");
       // Send user an email with verification code
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
-      console.log("Email verification prepared, setting pendingVerification to true");
       // Set 'pendingVerification' to true to display second form
       // and capture OTP code
       setPendingVerification(true);
     } catch (err: any) {
       // See https://clerk.com/docs/custom-flows/error-handling
-      console.error("Sign-up error details:", JSON.stringify(err, null, 2));
+      // for more info on error handling
+      console.error(JSON.stringify(err, null, 2));
 
       // Extract error message to display to the user
       if (err.errors && err.errors.length > 0) {
@@ -186,8 +247,6 @@ export default function SignUpScreen() {
 
         // Extract field-specific errors
         err.errors.forEach((error: any) => {
-          console.log("Processing error:", error);
-          
           if (
             error.meta?.paramName === "emailAddress" ||
             error.meta?.paramName === "identifier"
@@ -195,19 +254,6 @@ export default function SignUpScreen() {
             newFieldErrors.email = error.message;
           } else if (error.meta?.paramName === "password") {
             newFieldErrors.password = error.message;
-          } else if (error.code === "form_param_format_invalid") {
-            // Handle specific Clerk validation errors
-            if (error.meta?.name === "email_address" || error.meta?.name === "identifier") {
-              newFieldErrors.email = "Email address format is invalid";
-            } else {
-              generalError = error.message || "Invalid format";
-            }
-          } else if (error.code === "not_allowed_access") {
-            if (error.meta?.name === "email_address") {
-              newFieldErrors.email = "Email contains invalid characters ('+', '=', '#' not allowed)";
-            } else {
-              generalError = error.message;
-            }
           } else {
             generalError = error.message;
           }
@@ -230,14 +276,11 @@ export default function SignUpScreen() {
         } else if (firstError.code === "form_identifier_exists") {
           setNadaMessage(getValidationErrorMessage("email_already_exists"));
         } else if (firstError.code === "form_password_pwned") {
+          // Specific message for compromised passwords
           setNadaMessage(getValidationErrorMessage("password_compromised"));
         } else if (firstError.code === "form_param_format_invalid") {
+          // Specific message for invalid email format
           setNadaMessage(getValidationErrorMessage("email_invalid"));
-        } else if (
-          firstError.code === "not_allowed_access" &&
-          firstError.meta?.name === "email_address"
-        ) {
-          setNadaMessage(getValidationErrorMessage("invalid_subaddress"));
         } else {
           setNadaMessage(getValidationErrorMessage("generic_error"));
         }
@@ -245,11 +288,8 @@ export default function SignUpScreen() {
         setErrorMessage(
           "Something went wrong. Try again or don't. I don't care."
         );
-        setNadaMessage(getValidationErrorMessage("generic_error"));
       }
     } finally {
-      clearTimeout(timeoutId);
-      console.log("Sign-up process completed (success or error)");
       setLoading(false);
     }
   };
@@ -275,13 +315,10 @@ export default function SignUpScreen() {
         // complete further steps.
         console.error(JSON.stringify(signUpAttempt, null, 2));
       }
-    } catch (err: any) {
+    } catch (err) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
       console.error(JSON.stringify(err, null, 2));
-      setErrorMessage(
-        "Verification failed. Did you type the code incorrectly? Typical."
-      );
     } finally {
       setLoading(false);
     }
@@ -419,10 +456,7 @@ export default function SignUpScreen() {
             </View>
 
             <TouchableOpacity
-              style={[
-                authStyles.button,
-                loading ? { opacity: 0.7 } : null
-              ]}
+              style={authStyles.button}
               onPress={onSignUpPress}
               disabled={loading}
             >

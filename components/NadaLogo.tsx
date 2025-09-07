@@ -1,12 +1,16 @@
 import React from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { NadaTheme } from "../constants/NadaTheme";
 
 interface NadaLogoProps {
   size?: "small" | "medium" | "large";
+  variant?: "default" | "auth";
 }
 
-const NadaLogo: React.FC<NadaLogoProps> = ({ size = "medium" }) => {
+const NadaLogo: React.FC<NadaLogoProps> = ({
+  size = "medium",
+  variant = "default",
+}) => {
   // Scale factors based on size prop
   const fontSizes = {
     small: 20,
@@ -15,7 +19,14 @@ const NadaLogo: React.FC<NadaLogoProps> = ({ size = "medium" }) => {
   };
 
   return (
-    <Text style={[styles.appTitle, { fontSize: fontSizes[size] }]}>nada</Text>
+    <View style={{ alignItems: "center" }}>
+      <Text style={[styles.appTitle, { fontSize: fontSizes[size] }]}>nada</Text>
+      {variant === "auth" && (
+        <Text style={styles.tagline}>
+          your indifferent productivity partner
+        </Text>
+      )}
+    </View>
   );
 };
 
@@ -33,6 +44,13 @@ export const nadaStyles = StyleSheet.create({
   appTitle: {
     fontWeight: "700",
     color: NadaTheme.colors.primary,
+  },
+
+  tagline: {
+    fontSize: 12,
+    color: NadaTheme.colors.textSecondary,
+    marginTop: 4,
+    fontStyle: "italic",
   },
 
   // Character styles
@@ -136,6 +154,12 @@ const styles = StyleSheet.create({
   appTitle: {
     fontWeight: "700",
     color: NadaTheme.colors.primary,
+  },
+  tagline: {
+    fontSize: 12,
+    color: NadaTheme.colors.textSecondary,
+    marginTop: 4,
+    fontStyle: "italic",
   },
 });
 

@@ -4,6 +4,10 @@ import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import SafeScreen from "../components/SafeScreen";
 import { NadaTheme } from "../constants/NadaTheme";
+import { initializeOAuth } from "../utils/oauth";
+
+// Initialize OAuth for Google sign-in
+initializeOAuth();
 
 export default function RootLayout() {
   return (
