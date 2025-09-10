@@ -16,8 +16,6 @@ import NadaLogo from "../../components/NadaLogo";
 import { SignOutButton } from "../../components/SignOutButton";
 import SpeechBubble from "../../components/SpeechBubble";
 import { NadaTheme } from "../../constants/NadaTheme";
-import BannerAdComponent from "../../components/BannerAdComponent";
-import { showInterstitialAd } from "../../utils/adService";
 
 const NadaHomeScreen = () => {
   // Fix: useMemo for Animated.Value to avoid changing reference every render
@@ -122,17 +120,6 @@ const NadaHomeScreen = () => {
   // Handle navigation to auth screens
   const handleAuthPress = (screen: "sign-in" | "sign-up") => {
     router.push(`/${screen}`);
-  };
-
-  // Handle showing an interstitial ad
-  const handleShowInterstitialAd = async () => {
-    // Show interstitial ad
-    const success = await showInterstitialAd();
-    if (success) {
-      console.log('Interstitial ad was shown successfully');
-    } else {
-      console.log('Interstitial ad failed to show');
-    }
   };
 
   // Using the reusable SpeechBubble component
@@ -365,22 +352,6 @@ const NadaHomeScreen = () => {
             </View>
           </View>
         )}
-        
-        {/* Ad section */}
-        <View style={styles.adContainer}>
-          {/* Interstitial Ad Button */}
-          <TouchableOpacity 
-            style={styles.adButton}
-            onPress={handleShowInterstitialAd}
-          >
-            <Text style={styles.adButtonText}>Show Full Screen Ad</Text>
-          </TouchableOpacity>
-          
-          {/* Banner Ad */}
-          <BannerAdComponent
-            style={{ marginTop: 20 }}
-          />
-        </View>
       </ScrollView>
     </View>
   );
@@ -819,25 +790,7 @@ const styles = StyleSheet.create({
     color: NadaTheme.colors.text,
   },
 
-  // Ad-related styles
-  adContainer: {
-    width: '100%',
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  
-  adButton: {
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: NadaTheme.colors.primary,
-    borderRadius: 8,
-  },
-  
-  adButtonText: {
-    color: NadaTheme.colors.text,
-    fontWeight: '600',
-  },
+  // Bottom navigation styles removed
 });
 
 export default NadaHomeScreen;

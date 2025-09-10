@@ -37,21 +37,10 @@
         }
       ],
       "expo-secure-store",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-1609492440808781~3500829830",
-          "iosAppId": "ca-app-pub-1609492440808781~3500829830",
-          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
-        }
-      ]
+      "react-native-google-mobile-ads"
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "react-native-google-mobile-ads": {
-      "android_app_id": "ca-app-pub-1609492440808781~3500829830",
-      "ios_app_id": "ca-app-pub-1609492440808781~3500829830"
     }
   }
 }
