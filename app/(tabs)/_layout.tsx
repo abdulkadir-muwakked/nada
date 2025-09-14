@@ -14,6 +14,7 @@ export default function Layout() {
       }}
     >
       <Tabs.Screen name="index" />
+      <Tabs.Screen name="ad-test" />
     </Tabs>
   );
 }

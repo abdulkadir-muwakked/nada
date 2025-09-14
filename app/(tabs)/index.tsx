@@ -15,6 +15,11 @@ import NadaCharacter from "../../components/NadaCharacter";
 import NadaLogo from "../../components/NadaLogo";
 import { SignOutButton } from "../../components/SignOutButton";
 import SpeechBubble from "../../components/SpeechBubble";
+import {
+  getBreakMessage,
+  getResumeMessage,
+  getSessionStartMessage,
+} from "../../constants/AuthMessages";
 import { NadaTheme } from "../../constants/NadaTheme";
 
 const NadaHomeScreen = () => {
@@ -42,6 +47,9 @@ const NadaHomeScreen = () => {
   const [currentSession] = useState<number>(2); // Remove setCurrentSession if not used
   const [sessionGoal] = useState(4);
   const [streak] = useState(3);
+  const [currentMessage, setCurrentMessage] = useState<string>(
+    getSessionStartMessage()
+  );
 
   // When preset changes, update timer
   useEffect(() => {
@@ -62,10 +70,16 @@ const NadaHomeScreen = () => {
     }
     if (timerSeconds === 0 && isRunning) {
       if (!isRest) {
+        // Timer completed, switch to rest
         setIsRest(true);
         setSelectedPreset(REST_PRESET.value);
+        // Update message for break time
+        setCurrentMessage(getBreakMessage());
       } else {
+        // Rest completed
         setIsRunning(false);
+        // Update message for completed session
+        setCurrentMessage(getSessionStartMessage());
       }
     }
     return () => {
@@ -87,12 +101,38 @@ const NadaHomeScreen = () => {
     const num = parseInt(text, 10);
     if (!isNaN(num) && num > 0) {
       setSelectedPreset(num * 60);
+      // Reset to focus mode when custom time is entered
+      setIsRest(false);
+      // Update message for custom time
+      setCurrentMessage(getSessionStartMessage());
     }
   };
 
   const handlePresetSelect = (value: number) => {
+    const isRestPreset = value === REST_PRESET.value;
     setSelectedPreset(value);
     setCustomTime("");
+
+    // Update message when user changes timer preset
+    updateMessageBasedOnState(isRunning, isRestPreset);
+
+    // If selecting rest preset, update isRest
+    if (isRestPreset) {
+      setIsRest(true);
+    } else {
+      setIsRest(false);
+    }
+  };
+
+  // Update message based on current timer state
+  const updateMessageBasedOnState = (running: boolean, rest: boolean) => {
+    if (running) {
+      setCurrentMessage(getResumeMessage());
+    } else if (rest) {
+      setCurrentMessage(getBreakMessage());
+    } else {
+      setCurrentMessage(getSessionStartMessage());
+    }
   };
 
   const handlePlayPress = () => {
@@ -109,17 +149,34 @@ const NadaHomeScreen = () => {
       }),
     ]).start();
 
-    setIsRunning(!isRunning);
+    const newRunningState = !isRunning;
+    setIsRunning(newRunningState);
+
+    // Update the message when user clicks play/pause
+    updateMessageBasedOnState(newRunningState, isRest);
   };
 
   const handleMotivatePress = () => {
-    // Handle motivate button press
-    console.log("Motivate me pressed!");
+    // Get a new motivational message based on current timer state
+    if (isSignedIn) {
+      if (isRest) {
+        setCurrentMessage(getBreakMessage());
+      } else if (isRunning) {
+        setCurrentMessage(getResumeMessage());
+      } else {
+        setCurrentMessage(getSessionStartMessage());
+      }
+    }
   };
 
   // Handle navigation to auth screens
   const handleAuthPress = (screen: "sign-in" | "sign-up") => {
     router.push(`/${screen}`);
+  };
+
+  // Get appropriate session message based on timer state
+  const getTimerStateMessage = (): string => {
+    return currentMessage;
   };
 
   // Using the reusable SpeechBubble component
@@ -308,7 +365,7 @@ const NadaHomeScreen = () => {
         <SpeechBubble
           message={
             isSignedIn
-              ? "Oh look who's back. Ready to disappoint me again?"
+              ? getTimerStateMessage()
               : "Sign in if you must. I'll judge your productivity either way."
           }
         />

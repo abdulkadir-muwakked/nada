@@ -1,4 +1,4 @@
-# Welcome to your Expo app 👋
+# MyApp - React Native Expo App
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
@@ -13,7 +13,28 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Start the app
 
    ```bash
-   npx expo start
+   npm start
+   ```
+
+3. Run on iOS
+
+   ```bash
+   npm run ios
+   ```
+
+## Troubleshooting iOS builds
+
+If you encounter issues with iOS builds, try these scripts:
+
+1. Simple rebuild:
+
+   ```bash
+   ./scripts/rebuild-ios.sh
+   ```
+
+2. Deep clean and rebuild (when facing persistent issues):
+   ```bash
+   ./scripts/deep-clean-rebuild.sh
    ```
 
 In the output, you'll find options to open the app in a

@@ -16,6 +16,10 @@ prepare_react_native_project!
 target 'MyApp' do
   use_expo_modules!
 
+  # Explicitly include Google Mobile Ads SDK
+  pod 'Google-Mobile-Ads-SDK'
+  pod 'GoogleUserMessagingPlatform'
+
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
   else
@@ -43,6 +47,22 @@ target 'MyApp' do
   )
 
   post_install do |installer|
+    # Fix for Google Mobile Ads SDK
+    installer.pods_project.targets.each do |target|
+      if target.name == 'react-native-google-mobile-ads' || target.name == 'RNGoogleMobileAds'
+        target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+        end
+      end
+      
+      # Fix for other modules if needed
+      if ['Google-Mobile-Ads-SDK', 'GoogleUserMessagingPlatform', 'RNGoogleMobileAdsModule'].include?(target.name)
+        target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+        end
+      end
+    end
+    
     react_native_post_install(
       installer,
       config[:reactNativePath],

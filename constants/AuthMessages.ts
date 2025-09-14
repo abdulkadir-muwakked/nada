@@ -90,6 +90,48 @@ export const validationErrorMessages = {
   ],
 };
 
+// Snarky messages shown during focus/start/rest sessions
+export const sessionMessages = {
+  start: [
+    "New timer started. Let's pretend you're going to finish it this time.",
+    "Focus mode: activated. Distractions: laughing in the corner.",
+    "Alright, let's waste the next 25 minutes pretending to be productive.",
+    "Nada believes in you. Just kidding, Nada doesn't believe in anything.",
+    "Welcome to another round of self-deception. Begin your session.",
+    "Go on, prove Nada wrong. Or just procrastinate creatively again.",
+    "Timer's on. Expectations are low, but we move.",
+    "Existential crisis loading... oh wait, that's just your to-do list.",
+    "Nada is timing you. Your brain? Still buffering...",
+    "Start strong, end... well, let's not get ahead of ourselves.",
+  ],
+
+  break: [
+    "Break time. Or as you call it: the start of your YouTube binge.",
+    "Congrats on surviving 25 minutes of pretending to focus.",
+    "Rest your eyes, not your bad habits.",
+    "A well-earned break... from scrolling aimlessly to scrolling intentionally.",
+    "Hydrate. Stretch. Question your life choices. Repeat.",
+    "Break time: because mediocrity deserves rest too.",
+    "That was impressive-ish. Now go do nothing with purpose.",
+    "The break you didn't earn, but are definitely taking anyway.",
+    "Breathe in. Breathe out. Continue spiraling.",
+    "Nada approves this rest. Just kidding, Nada judges you silently.",
+  ],
+
+  resume: [
+    "Back at it again. Let's see how long this lasts.",
+    "And we're back — not better, just back.",
+    "Break's over. Reality resumes. So does disappointment.",
+    "Refreshed? Recharged? Still hopeless? Welcome back!",
+    "Nada missed you. Not really, but it sounds nice.",
+    "Time to pretend you're focused again. Make it count-ish.",
+    "Round 2: Slightly more ambitious procrastination.",
+    "You're back. So is the existential dread. Fun!",
+    "No pressure, but everyone (Nada) expects you to fail gloriously.",
+    "Welcome back to your regularly scheduled identity crisis.",
+  ],
+};
+
 /**
  * Returns a random snarky message for auth screens
  */
@@ -127,4 +169,31 @@ export function getVerificationMessage(email: string): string {
     `Verification code sent to ${email}. Let's see if you can focus long enough to enter it.`,
   ];
   return messages[Math.floor(Math.random() * messages.length)];
+}
+
+/**
+ * Returns a random message for session start
+ */
+export function getSessionStartMessage(): string {
+  return sessionMessages.start[
+    Math.floor(Math.random() * sessionMessages.start.length)
+  ];
+}
+
+/**
+ * Returns a random message for break time
+ */
+export function getBreakMessage(): string {
+  return sessionMessages.break[
+    Math.floor(Math.random() * sessionMessages.break.length)
+  ];
+}
+
+/**
+ * Returns a random message for resuming after a break
+ */
+export function getResumeMessage(): string {
+  return sessionMessages.resume[
+    Math.floor(Math.random() * sessionMessages.resume.length)
+  ];
 }

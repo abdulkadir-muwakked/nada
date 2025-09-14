@@ -7,10 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.MyApp"
+      "bundleIdentifier": "com.mycompany.myapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +36,13 @@
         }
       ],
       "expo-secure-store",
-      "react-native-google-mobile-ads"
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-1609492440808781~3500829830",
+          "androidAppId": "ca-app-pub-1609492440808781~3500829830"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
