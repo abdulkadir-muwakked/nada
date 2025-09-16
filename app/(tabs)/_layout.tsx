@@ -2,6 +2,8 @@ import { Tabs } from "expo-router";
 import { NadaTheme } from "../../constants/NadaTheme";
 
 export default function Layout() {
+  const isDevelopment = process.env.NODE_ENV === "development" || __DEV__;
+
   return (
     <Tabs
       screenOptions={{
@@ -14,7 +16,14 @@ export default function Layout() {
       }}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="ad-test" />
+      <Tabs.Screen name="premium-messages" />
+      <Tabs.Screen name="nada-expressions" />
+      {isDevelopment && (
+        <>
+          <Tabs.Screen name="ad-test" />
+          <Tabs.Screen name="screenshots" />
+        </>
+      )}
     </Tabs>
   );
 }

@@ -1,18 +1,29 @@
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import AdMobInitializationTest from "../../components/AdMobInitializationTest";
 import AdTestScreen from "../../components/AdTestScreen";
 import { NadaTheme } from "../../constants/NadaTheme";
+import { isDevelopment } from "../../utils/environment";
 
 export default function AdTestPage() {
+  const router = useRouter();
   const [testMode, setTestMode] = useState<"full" | "initialization">(
     "initialization"
   );
+
+  // Prevent access in production builds
+  if (!isDevelopment) {
+    // Redirect to home screen in production
+    router.replace("/");
+    return null;
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>AdMob Test</Text>
+        <Text style={styles.devIndicator}>DEVELOPMENT ONLY</Text>
       </View>
 
       <View style={styles.tabContainer}>
@@ -74,6 +85,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: NadaTheme.colors.text,
+  },
+  devIndicator: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: NadaTheme.colors.primary,
+    position: "absolute",
+    right: 20,
+    top: 22,
   },
   tabContainer: {
     flexDirection: "row",

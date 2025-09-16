@@ -1,6 +1,12 @@
 // Type definitions for Nada app components
 import { StyleProp, TextStyle, ViewStyle } from "react-native";
 
+// User Type for premium features
+export interface User {
+  isPremium: boolean;
+  // Add other user properties as needed
+}
+
 // Nada Theme Types
 export interface NadaThemeColors {
   primary: string;

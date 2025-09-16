@@ -21,6 +21,10 @@ import {
   getSessionStartMessage,
 } from "../../constants/AuthMessages";
 import { NadaTheme } from "../../constants/NadaTheme";
+import {
+  initializeStreak,
+  recordCompletedSession,
+} from "../../utils/streakManager";
 
 const NadaHomeScreen = () => {
   // Fix: useMemo for Animated.Value to avoid changing reference every render
@@ -46,10 +50,25 @@ const NadaHomeScreen = () => {
 
   const [currentSession] = useState<number>(2); // Remove setCurrentSession if not used
   const [sessionGoal] = useState(4);
-  const [streak] = useState(3);
+  const [streak, setStreak] = useState<number>(0);
   const [currentMessage, setCurrentMessage] = useState<string>(
     getSessionStartMessage()
   );
+  const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
+
+  // Initialize streak data when app loads
+  useEffect(() => {
+    const loadStreak = async () => {
+      try {
+        const currentStreak = await initializeStreak();
+        setStreak(currentStreak);
+      } catch (error) {
+        console.error("Error loading streak:", error);
+      }
+    };
+
+    loadStreak();
+  }, []);
 
   // When preset changes, update timer
   useEffect(() => {
@@ -75,11 +94,30 @@ const NadaHomeScreen = () => {
         setSelectedPreset(REST_PRESET.value);
         // Update message for break time
         setCurrentMessage(getBreakMessage());
+
+        // Record a completed focus session and update streak
+        const updateStreakCount = async () => {
+          try {
+            const updatedStreak = await recordCompletedSession();
+            setStreak(updatedStreak);
+          } catch (error) {
+            console.error("Error updating streak:", error);
+          }
+        };
+        updateStreakCount();
       } else {
         // Rest completed
         setIsRunning(false);
-        // Update message for completed session
-        setCurrentMessage(getSessionStartMessage());
+        // Show task completed expression briefly
+        setTaskCompleted(true);
+        // Custom sarcastic completion message
+        setCurrentMessage("Wow, you actually finished something. I'm shocked.");
+        // Reset task completed status after 3 seconds
+        setTimeout(() => {
+          setTaskCompleted(false);
+          // Return to default message
+          setCurrentMessage(getSessionStartMessage());
+        }, 3000);
       }
     }
     return () => {
@@ -132,6 +170,12 @@ const NadaHomeScreen = () => {
       setCurrentMessage(getBreakMessage());
     } else {
       setCurrentMessage(getSessionStartMessage());
+
+      // If starting after task completion, briefly show a "task start" expression
+      if (taskCompleted) {
+        // Reset task completed status
+        setTaskCompleted(false);
+      }
     }
   };
 
@@ -151,6 +195,16 @@ const NadaHomeScreen = () => {
 
     const newRunningState = !isRunning;
     setIsRunning(newRunningState);
+
+    // If starting a new focus session, briefly show taskStart expression
+    if (newRunningState && !isRest) {
+      // This state variable will be used in the NadaCharacter expression prop
+      const isStarting = true;
+
+      // We're using the variable to make the compiler happy, but the real effect
+      // is from the re-render when setting isRunning
+      console.log("Starting new focus session", isStarting);
+    }
 
     // Update the message when user clicks play/pause
     updateMessageBasedOnState(newRunningState, isRest);
@@ -185,20 +239,42 @@ const NadaHomeScreen = () => {
   const TimerDisplay = () => {
     const progress = ((selectedPreset - timerSeconds) / selectedPreset) * 360;
 
+    // Get label based on current state with more expressive language
+    const getTimerLabel = () => {
+      if (taskCompleted) return "NICE JOB!";
+      if (isRest) return "REST TIME";
+      if (isRunning) return "FOCUSING";
+      return "READY?";
+    };
+
     return (
       <View style={styles.timerContainer}>
-        <View style={styles.timerCircle}>
+        <View
+          style={[
+            styles.timerCircle,
+            taskCompleted && {
+              borderColor: NadaTheme.colors.primary,
+              opacity: 0.9,
+            },
+          ]}
+        >
           <View
             style={[
               styles.timerProgress,
               { transform: [{ rotate: `${progress - 90}deg` }] },
+              taskCompleted && { borderTopColor: NadaTheme.colors.text },
             ]}
           />
         </View>
         <View style={styles.timerDisplay}>
           <Text style={styles.timerTime}>{formatTime(timerSeconds)}</Text>
-          <Text style={styles.timerLabel}>
-            {isRest ? "REST" : "FOCUS TIME"}
+          <Text
+            style={[
+              styles.timerLabel,
+              taskCompleted && { color: NadaTheme.colors.primary },
+            ]}
+          >
+            {getTimerLabel()}
           </Text>
         </View>
       </View>
@@ -345,13 +421,14 @@ const NadaHomeScreen = () => {
         <View style={styles.streakCounter}>
           <Text style={styles.streakText}>{streak} day streak</Text>
         </View>
-
+        {/* 
         {isSignedIn && (
           <View style={styles.authStatusIndicator}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>Signed In</Text>
-          </View>
-        )}
+            {/* <View style={styles.statusDot} /> */}
+        {/* <Text style={styles.statusText}>Signed In</Text> */}
+        {/* </View> */}
+        {/* )} */}
+        {/*  */}
       </View>
 
       {/* Main Content - Now Scrollable */}
@@ -361,7 +438,24 @@ const NadaHomeScreen = () => {
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
-        <NadaCharacter />
+        <NadaCharacter
+          expression={
+            !isSignedIn
+              ? "neutral"
+              : taskCompleted
+              ? "taskComplete"
+              : !isRunning && !isRest
+              ? "neutral"
+              : // When the timer just started, briefly show the taskStart expression
+              isRunning && !isRest && timerSeconds === selectedPreset
+              ? "taskStart"
+              : isRunning && !isRest
+              ? "focusOngoing"
+              : isRest
+              ? "breakTime"
+              : "neutral"
+          }
+        />
         <SpeechBubble
           message={
             isSignedIn
