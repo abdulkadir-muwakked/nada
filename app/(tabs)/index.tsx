@@ -15,6 +15,7 @@ import NadaCharacter from "../../components/NadaCharacter";
 import NadaLogo from "../../components/NadaLogo";
 import { SignOutButton } from "../../components/SignOutButton";
 import SpeechBubble from "../../components/SpeechBubble";
+import CircularProgress from "../../components/CircularProgress";
 import {
   getBreakMessage,
   getResumeMessage,
@@ -154,11 +155,19 @@ const NadaHomeScreen = () => {
     setCustomTime(text);
     const num = parseInt(text, 10);
     if (!isNaN(num) && num > 0) {
-      setSelectedPreset(num * 60);
-      // Reset to focus mode when custom time is entered
+      const seconds = num * 60;
+      setSelectedPreset(seconds);
+      setTimerSeconds(seconds);
+      
+      // Always reset to focus mode when custom time is entered
+      // This provides consistent behavior
       setIsRest(false);
+      
       // Update message for custom time
       setCurrentMessage(getSessionStartMessage());
+      
+      // Reset running state
+      setIsRunning(false);
     }
   };
 
@@ -167,14 +176,21 @@ const NadaHomeScreen = () => {
     setSelectedPreset(value);
     setCustomTime("");
 
+    // Reset the timer to the full selected value
+    setTimerSeconds(value);
+
+    // Update isRest based on whether this is a rest preset
+    setIsRest(isRestPreset);
+
     // Update message when user changes timer preset
     updateMessageBasedOnState(isRunning, isRestPreset);
-
-    // If selecting rest preset, update isRest
-    if (isRestPreset) {
-      setIsRest(true);
-    } else {
-      setIsRest(false);
+    
+    // If running, briefly pause to ensure clean transition
+    if (isRunning) {
+      setIsRunning(false);
+      setTimeout(() => {
+        setIsRunning(true);
+      }, 100);
     }
   };
 
@@ -287,6 +303,13 @@ const NadaHomeScreen = () => {
       setCurrentMessage(getSessionStartMessage());
       console.log("Switched to focus mode");
     }
+    
+    // Force update the timer display to reflect the new mode immediately
+    // This helps ensure proper visual feedback
+    setTimeout(() => {
+      // This triggers a re-render with the new mode properly applied
+      setTimerSeconds(prev => prev);
+    }, 0);
 
     // If the timer was already running, restart it in the new mode after a brief pause
     if (wasRunning) {
@@ -306,35 +329,36 @@ const NadaHomeScreen = () => {
 
   // TimerDisplay with just the timer display
   const TimerDisplay = () => {
-    const progress = ((selectedPreset - timerSeconds) / selectedPreset) * 360;
-
-    // Get label based on current state with more expressive language
+    // Calculate normalized progress based on timer mode
+    // Focus mode: progress = remaining time / total time (starts at 1, ends at 0)
+    // Break mode: progress = elapsed time / total time = 1 - (remaining time / total time) (starts at 0, ends at 1)
+    const normalizedProgress = isRest 
+      ? 1 - (timerSeconds / selectedPreset)  // Break mode: starts empty (0), ends full (1)
+      : timerSeconds / selectedPreset;       // Focus mode: starts full (1), ends empty (0)
+    
+    // Get label based on current state with expressive language
+    // This ensures the correct label is always displayed based on the actual mode
     const getTimerLabel = () => {
       if (taskCompleted) return "NICE JOB!";
-      if (isRest) return "REST TIME";
-      if (isRunning) return "FOCUSING";
+      if (isRest) return "REST TIME"; // Explicitly tied to isRest state
+      if (isRunning) return isRest ? "RESTING" : "FOCUSING"; // Clear distinction
       return "READY?";
     };
 
+    // Determine the progress color based on task completion state
+    const progressColor = taskCompleted ? NadaTheme.colors.primary : "#ff6b6b";
+
     return (
       <View style={styles.timerContainer}>
-        <View
-          style={[
-            styles.timerCircle,
-            taskCompleted && {
-              borderColor: NadaTheme.colors.primary,
-              opacity: 0.9,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.timerProgress,
-              { transform: [{ rotate: `${progress - 90}deg` }] },
-              taskCompleted && { borderTopColor: NadaTheme.colors.text },
-            ]}
-          />
-        </View>
+        <CircularProgress
+          progress={normalizedProgress}
+          mode={isRest ? "break" : "focus"}
+          size={180}
+          strokeWidth={6}
+          backgroundColor="rgba(255, 255, 255, 0.1)"
+          progressColor={progressColor}
+          animated={isRunning}
+        />
         <View style={styles.timerDisplay}>
           <Text style={styles.timerTime}>{formatTime(timerSeconds)}</Text>
           <Text
@@ -764,6 +788,15 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     marginBottom: 10,
+  },
+  
+  progressContainer: {
+    width: 180,
+    height: 180,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 90,
   },
 
   timerCircle: {
