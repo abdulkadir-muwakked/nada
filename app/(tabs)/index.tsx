@@ -25,6 +25,11 @@ import {
   initializeStreak,
   recordCompletedSession,
 } from "../../utils/streakManager";
+// Import from new sessionUtil file instead
+import {
+  initializeSessions,
+  recordCompletedFocusSession,
+} from "../../utils/sessionUtil";
 
 const NadaHomeScreen = () => {
   // Fix: useMemo for Animated.Value to avoid changing reference every render
@@ -48,26 +53,32 @@ const NadaHomeScreen = () => {
   const [isRest, setIsRest] = useState(false);
   const [customTime, setCustomTime] = useState<string>("");
 
-  const [currentSession] = useState<number>(2); // Remove setCurrentSession if not used
-  const [sessionGoal] = useState(4);
+  const [currentSession, setCurrentSession] = useState<number>(0);
+  const [sessionGoal, setSessionGoal] = useState<number>(4);
   const [streak, setStreak] = useState<number>(0);
   const [currentMessage, setCurrentMessage] = useState<string>(
     getSessionStartMessage()
   );
   const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
 
-  // Initialize streak data when app loads
+  // Initialize streak and session data when app loads
   useEffect(() => {
-    const loadStreak = async () => {
+    const loadData = async () => {
       try {
+        // Load streak data
         const currentStreak = await initializeStreak();
         setStreak(currentStreak);
+
+        // Load sessions data
+        const { sessionsCount, sessionGoal: goal } = await initializeSessions();
+        setCurrentSession(sessionsCount);
+        setSessionGoal(goal);
       } catch (error) {
-        console.error("Error loading streak:", error);
+        console.error("Error loading app data:", error);
       }
     };
 
-    loadStreak();
+    loadData();
   }, []);
 
   // When preset changes, update timer
@@ -95,16 +106,21 @@ const NadaHomeScreen = () => {
         // Update message for break time
         setCurrentMessage(getBreakMessage());
 
-        // Record a completed focus session and update streak
-        const updateStreakCount = async () => {
+        // Record a completed focus session and update streak and sessions count
+        const updateCounts = async () => {
           try {
+            // Update streak count
             const updatedStreak = await recordCompletedSession();
             setStreak(updatedStreak);
+            
+            // Update sessions count
+            const updatedSessions = await recordCompletedFocusSession();
+            setCurrentSession(updatedSessions);
           } catch (error) {
-            console.error("Error updating streak:", error);
+            console.error("Error updating counts:", error);
           }
         };
-        updateStreakCount();
+        updateCounts();
       } else {
         // Rest completed
         setIsRunning(false);
