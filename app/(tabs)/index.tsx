@@ -527,13 +527,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 25,
+    paddingHorizontal: 15,
     paddingTop: 10,
     paddingBottom: 10,
   },
 
   headerLeft: {
-    flex: 1,
+    // flex: 1,
+    paddingHorizontal: 15,
+    // gap: 12,
   },
 
   headerRight: {

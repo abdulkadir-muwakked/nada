@@ -1,4 +1,4 @@
-package com.anonymous.MyApp
+package com.anonymous.nada
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

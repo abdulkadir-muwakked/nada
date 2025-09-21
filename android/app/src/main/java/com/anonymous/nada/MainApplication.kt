@@ -1,4 +1,4 @@
-package com.anonymous.MyApp
+package com.anonymous.nada
 
 import android.app.Application
 import android.content.res.Configuration
