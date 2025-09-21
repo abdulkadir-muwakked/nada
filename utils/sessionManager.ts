@@ -144,13 +144,13 @@ export const initializeSessions = async (): Promise<{
 export const recordCompletedFocusSession = async (): Promise<number> => {
   // Get current sessions count
   const currentCount = await getSessionsCount();
-  
+
   // Increment by 1
   const newCount = currentCount + 1;
-  
+
   // Save the updated count
   await saveSessionsCount(newCount);
-  
+
   return newCount;
 };
 

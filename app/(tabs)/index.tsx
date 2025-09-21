@@ -112,7 +112,7 @@ const NadaHomeScreen = () => {
             // Update streak count
             const updatedStreak = await recordCompletedSession();
             setStreak(updatedStreak);
-            
+
             // Update sessions count
             const updatedSessions = await recordCompletedFocusSession();
             setCurrentSession(updatedSessions);
@@ -244,6 +244,59 @@ const NadaHomeScreen = () => {
     router.push(`/${screen}`);
   };
 
+  // Toggle between focus and break sessions
+  const toggleSessionMode = () => {
+    // Apply button press animation
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Remember the current running state so we can restore it
+    const wasRunning = isRunning;
+
+    // Pause the timer while we make changes
+    if (wasRunning) {
+      setIsRunning(false);
+    }
+
+    // Toggle between focus and rest mode
+    const newIsRest = !isRest;
+    setIsRest(newIsRest);
+
+    // Set the appropriate preset based on the new mode
+    if (newIsRest) {
+      // Switching to break mode
+      setSelectedPreset(REST_PRESET.value);
+      setTimerSeconds(REST_PRESET.value);
+      setCurrentMessage(getBreakMessage());
+      console.log("Switched to break mode");
+    } else {
+      // Switching to focus mode
+      const defaultFocusPreset = TIMER_PRESETS[1].value; // Default 25m
+      setSelectedPreset(defaultFocusPreset);
+      setTimerSeconds(defaultFocusPreset);
+      setCurrentMessage(getSessionStartMessage());
+      console.log("Switched to focus mode");
+    }
+
+    // If the timer was already running, restart it in the new mode after a brief pause
+    if (wasRunning) {
+      // Use setTimeout to ensure state updates complete before restarting
+      setTimeout(() => {
+        setIsRunning(true);
+      }, 100);
+    }
+  };
+
   // Get appropriate session message based on timer state
   const getTimerStateMessage = (): string => {
     return currentMessage;
@@ -364,22 +417,47 @@ const NadaHomeScreen = () => {
 
   const Controls = () => (
     <View style={styles.controls}>
-      <TouchableOpacity style={styles.controlBtn}>
-        <Text style={styles.controlIcon}>⚙️</Text>
-      </TouchableOpacity>
+      <View>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity
+            style={[
+              styles.controlBtn,
+              isRest && styles.restModeBtn,
+              !isRest && styles.focusModeBtn,
+            ]}
+            onPress={toggleSessionMode}
+            accessibilityLabel={
+              isRest ? "Switch to focus mode" : "Switch to break mode"
+            }
+          >
+            <Text style={styles.controlIcon}>{isRest ? "📚" : "☕️"}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+        <Text style={styles.buttonLabel}>{isRest ? "Focus" : "Break"}</Text>
+      </View>
 
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <View>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity
+            style={[styles.controlBtn, styles.primaryBtn]}
+            onPress={handlePlayPress}
+            accessibilityLabel={isRunning ? "Pause timer" : "Start timer"}
+          >
+            <Text style={styles.controlIcon}>{isRunning ? "⏸️" : "▶️"}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+        <Text style={styles.buttonLabel}>{isRunning ? "Pause" : "Start"}</Text>
+      </View>
+
+      <View>
         <TouchableOpacity
-          style={[styles.controlBtn, styles.primaryBtn]}
-          onPress={handlePlayPress}
+          style={styles.controlBtn}
+          accessibilityLabel="Skip to next"
         >
-          <Text style={styles.controlIcon}>{isRunning ? "⏸️" : "▶️"}</Text>
+          <Text style={styles.controlIcon}>⏭️</Text>
         </TouchableOpacity>
-      </Animated.View>
-
-      <TouchableOpacity style={styles.controlBtn}>
-        <Text style={styles.controlIcon}>⏭️</Text>
-      </TouchableOpacity>
+        <Text style={styles.buttonLabel}>Skip</Text>
+      </View>
     </View>
   );
 
@@ -913,6 +991,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#ffffff",
+  },
+
+  // Button styles for mode toggling
+  focusModeBtn: {
+    backgroundColor: "rgba(25, 118, 210, 0.4)",
+    borderColor: "rgba(25, 118, 210, 0.6)",
+  },
+
+  restModeBtn: {
+    backgroundColor: "rgba(76, 175, 80, 0.4)",
+    borderColor: "rgba(76, 175, 80, 0.6)",
+  },
+
+  buttonLabel: {
+    fontSize: 12,
+    color: "#a0a0a0",
+    marginTop: 4,
+    textAlign: "center",
   },
 
   authPromptContainer: {
