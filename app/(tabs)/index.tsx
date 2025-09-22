@@ -46,6 +46,11 @@ const NadaHomeScreen = () => {
   ];
   const REST_PRESET = { label: "Rest 5m", value: 5 * 60 };
 
+  // Add separate state variables for focus and break durations
+  const [focusDuration, setFocusDuration] = useState<number>(
+    TIMER_PRESETS[1].value
+  ); // Default 25m
+  const [breakDuration, setBreakDuration] = useState<number>(REST_PRESET.value); // Default 5m
   const [selectedPreset, setSelectedPreset] = useState<number>(
     TIMER_PRESETS[1].value
   ); // Default 25m
@@ -61,6 +66,13 @@ const NadaHomeScreen = () => {
     getSessionStartMessage()
   );
   const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
+
+  // Initialize timer when component mounts
+  useEffect(() => {
+    // Set initial timer values
+    setTimerSeconds(focusDuration);
+    console.log("Initial timer setup - focus duration:", focusDuration, "break duration:", breakDuration);
+  }, [focusDuration, breakDuration]);
 
   // Initialize streak and session data when app loads
   useEffect(() => {
@@ -84,10 +96,15 @@ const NadaHomeScreen = () => {
 
   // When preset changes, update timer
   useEffect(() => {
-    setTimerSeconds(selectedPreset);
-    setIsRest(false);
-    setIsRunning(false);
-  }, [selectedPreset]);
+    // Use the appropriate duration based on mode
+    if (isRest) {
+      setTimerSeconds(breakDuration);
+      console.log("Setting timer to break duration:", breakDuration);
+    } else {
+      setTimerSeconds(focusDuration);
+      console.log("Setting timer to focus duration:", focusDuration);
+    }
+  }, [focusDuration, breakDuration, isRest]);
 
   // Timer countdown effect
   useEffect(() => {
@@ -103,9 +120,11 @@ const NadaHomeScreen = () => {
       if (!isRest) {
         // Timer completed, switch to rest
         setIsRest(true);
-        setSelectedPreset(REST_PRESET.value);
+        // Use breakDuration instead of selectedPreset
+        setTimerSeconds(breakDuration);
         // Update message for break time
         setCurrentMessage(getBreakMessage());
+        console.log("Focus session completed, switching to break mode with duration:", breakDuration);
 
         // Record a completed focus session and update streak and sessions count
         const updateCounts = async () => {
@@ -140,7 +159,7 @@ const NadaHomeScreen = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, timerSeconds, isRest, REST_PRESET.value]);
+  }, [isRunning, timerSeconds, isRest, breakDuration]);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -247,20 +266,19 @@ const NadaHomeScreen = () => {
     const newIsRest = !isRest;
     setIsRest(newIsRest);
 
-    // Set the appropriate preset based on the new mode
+    // Set the appropriate timer based on the new mode
     if (newIsRest) {
       // Switching to break mode
-      setSelectedPreset(REST_PRESET.value);
-      setTimerSeconds(REST_PRESET.value);
+      setTimerSeconds(breakDuration);
+      setSelectedPreset(breakDuration); // Keep selectedPreset updated for UI consistency
       setCurrentMessage(getBreakMessage());
-      console.log("Switched to break mode");
+      console.log("Switched to break mode with duration:", breakDuration);
     } else {
       // Switching to focus mode
-      const defaultFocusPreset = TIMER_PRESETS[1].value; // Default 25m
-      setSelectedPreset(defaultFocusPreset);
-      setTimerSeconds(defaultFocusPreset);
+      setTimerSeconds(focusDuration);
+      setSelectedPreset(focusDuration); // Keep selectedPreset updated for UI consistency
       setCurrentMessage(getSessionStartMessage());
-      console.log("Switched to focus mode");
+      console.log("Switched to focus mode with duration:", focusDuration);
     }
 
     // Force update the timer display to reflect the new mode immediately
@@ -292,8 +310,16 @@ const NadaHomeScreen = () => {
     // Focus mode: progress = remaining time / total time (starts at 1, ends at 0)
     // Break mode: progress = elapsed time / total time = 1 - (remaining time / total time) (starts at 0, ends at 1)
     const normalizedProgress = isRest
-      ? 1 - timerSeconds / selectedPreset // Break mode: starts empty (0), ends full (1)
-      : timerSeconds / selectedPreset; // Focus mode: starts full (1), ends empty (0)
+      ? 1 - timerSeconds / breakDuration // Break mode: starts empty (0), ends full (1)
+      : timerSeconds / focusDuration; // Focus mode: starts full (1), ends empty (0)
+      
+    console.log("Progress calculation:", { 
+      isRest, 
+      timerSeconds, 
+      focusDuration, 
+      breakDuration, 
+      progress: normalizedProgress 
+    });
 
     // Get label based on current state with expressive language
     // This ensures the correct label is always displayed based on the actual mode
@@ -345,39 +371,27 @@ const NadaHomeScreen = () => {
 
     // Get the currently selected preset label for display
     const getSelectedFocusLabel = () => {
-      if (isRest) {
-        // Find the matching preset or show the custom time
-        const matchingPreset = TIMER_PRESETS.find(
-          (p) => p.value === selectedPreset
-        );
-        if (matchingPreset) return matchingPreset.label;
-
-        // If no match, must be custom time
-        const minutes = Math.floor(selectedPreset / 60);
-        return `${minutes}m`;
-      }
-
+      // Always use focusDuration for the Focus label, regardless of current mode
       // Find the matching preset
       const matchingPreset = TIMER_PRESETS.find(
-        (p) => p.value === selectedPreset
+        (p) => p.value === focusDuration
       );
       if (matchingPreset) return matchingPreset.label;
 
       // If no match, must be custom time
-      const minutes = Math.floor(selectedPreset / 60);
+      const minutes = Math.floor(focusDuration / 60);
       return `${minutes}m`;
     };
 
     const getSelectedRestLabel = () => {
-      if (!isRest) return "5m"; // Default rest time
-
-      // If rest mode is active, show current selection
-      if (selectedPreset === REST_PRESET.value) return "5m";
-      if (selectedPreset === 10 * 60) return "10m";
-      if (selectedPreset === 15 * 60) return "15m";
+      // Always use breakDuration for the Rest label, regardless of current mode
+      // Check against standard break durations
+      if (breakDuration === 5 * 60) return "5m";
+      if (breakDuration === 10 * 60) return "10m";
+      if (breakDuration === 15 * 60) return "15m";
 
       // If custom time
-      const minutes = Math.floor(selectedPreset / 60);
+      const minutes = Math.floor(breakDuration / 60);
       return `${minutes}m`;
     };
 
@@ -387,6 +401,10 @@ const NadaHomeScreen = () => {
       const num = parseInt(text, 10);
       if (!isNaN(num) && num > 0) {
         const seconds = num * 60;
+        // Always update focus duration
+        setFocusDuration(seconds);
+        console.log("Custom focus duration set to:", seconds);
+        
         // Only apply immediately if focus is selected
         if (!isRest) {
           setSelectedPreset(seconds);
@@ -403,6 +421,10 @@ const NadaHomeScreen = () => {
       const num = parseInt(text, 10);
       if (!isNaN(num) && num > 0) {
         const seconds = num * 60;
+        // Always update break duration
+        setBreakDuration(seconds);
+        console.log("Custom break duration set to:", seconds);
+        
         // Only apply immediately if rest is selected
         if (isRest) {
           setSelectedPreset(seconds);
@@ -416,8 +438,12 @@ const NadaHomeScreen = () => {
 
     // Handle focus preset selection
     const handleFocusPresetSelect = (value: number) => {
+      // Always update the focus duration
+      setFocusDuration(value);
+      console.log("Focus duration updated to:", value);
+      
       if (!isRest) {
-        // Already in focus mode, just update the value
+        // Already in focus mode, update the current timer
         setSelectedPreset(value);
         setTimerSeconds(value);
       } else {
@@ -442,8 +468,12 @@ const NadaHomeScreen = () => {
 
     // Handle rest preset selection
     const handleRestPresetSelect = (value: number) => {
+      // Always update the break duration
+      setBreakDuration(value);
+      console.log("Break duration updated to:", value);
+      
       if (isRest) {
-        // Already in rest mode, just update the value
+        // Already in rest mode, update the current timer
         setSelectedPreset(value);
         setTimerSeconds(value);
       } else {
@@ -572,18 +602,14 @@ const NadaHomeScreen = () => {
                   key={preset.label}
                   style={[
                     styles.dropdownItem,
-                    !isRest &&
-                      selectedPreset === preset.value &&
-                      styles.dropdownItemActive,
+                    focusDuration === preset.value && styles.dropdownItemActive,
                   ]}
                   onPress={() => handleFocusPresetSelect(preset.value)}
                 >
                   <Text
                     style={[
                       styles.dropdownItemText,
-                      !isRest &&
-                        selectedPreset === preset.value &&
-                        styles.dropdownItemTextActive,
+                      focusDuration === preset.value && styles.dropdownItemTextActive,
                     ]}
                   >
                     {preset.label}
@@ -648,18 +674,14 @@ const NadaHomeScreen = () => {
                   key={preset.label}
                   style={[
                     styles.dropdownItem,
-                    isRest &&
-                      selectedPreset === preset.value &&
-                      styles.dropdownItemActive,
+                    breakDuration === preset.value && styles.dropdownItemActive,
                   ]}
                   onPress={() => handleRestPresetSelect(preset.value)}
                 >
                   <Text
                     style={[
                       styles.dropdownItemText,
-                      isRest &&
-                        selectedPreset === preset.value &&
-                        styles.dropdownItemTextActive,
+                      breakDuration === preset.value && styles.dropdownItemTextActive,
                     ]}
                   >
                     {preset.label}
