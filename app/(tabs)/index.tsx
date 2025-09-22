@@ -52,8 +52,8 @@ const NadaHomeScreen = () => {
   const [timerSeconds, setTimerSeconds] = useState<number>(selectedPreset);
   const [isRunning, setIsRunning] = useState(false);
   const [isRest, setIsRest] = useState(false);
-  const [customTime, setCustomTime] = useState<string>("");
-
+  // Note: custom time handling is now managed within the TimerPresets component
+  
   const [currentSession, setCurrentSession] = useState<number>(0);
   const [sessionGoal, setSessionGoal] = useState<number>(4);
   const [streak, setStreak] = useState<number>(0);
@@ -150,49 +150,8 @@ const NadaHomeScreen = () => {
       .padStart(2, "0")}`;
   };
 
-  // Manual custom time change
-  const handleCustomTimeChange = (text: string) => {
-    setCustomTime(text);
-    const num = parseInt(text, 10);
-    if (!isNaN(num) && num > 0) {
-      const seconds = num * 60;
-      setSelectedPreset(seconds);
-      setTimerSeconds(seconds);
-
-      // Always reset to focus mode when custom time is entered
-      // This provides consistent behavior
-      setIsRest(false);
-
-      // Update message for custom time
-      setCurrentMessage(getSessionStartMessage());
-
-      // Reset running state
-      setIsRunning(false);
-    }
-  };
-
-  const handlePresetSelect = (value: number) => {
-    const isRestPreset = value === REST_PRESET.value;
-    setSelectedPreset(value);
-    setCustomTime("");
-
-    // Reset the timer to the full selected value
-    setTimerSeconds(value);
-
-    // Update isRest based on whether this is a rest preset
-    setIsRest(isRestPreset);
-
-    // Update message when user changes timer preset
-    updateMessageBasedOnState(isRunning, isRestPreset);
-
-    // If running, briefly pause to ensure clean transition
-    if (isRunning) {
-      setIsRunning(false);
-      setTimeout(() => {
-        setIsRunning(true);
-      }, 100);
-    }
-  };
+  // Note: Custom time and preset selection functionality has been moved to the TimerPresets component
+  // The component will directly update the state as needed
 
   // Update message based on current timer state
   const updateMessageBasedOnState = (running: boolean, rest: boolean) => {
@@ -374,57 +333,335 @@ const NadaHomeScreen = () => {
     );
   };
 
-  // Separate component for timer presets
-  const TimerPresets = () => (
-    <View style={styles.presetsContainer}>
-      <Text style={styles.presetsTitle}>Choose Timer</Text>
-      <View style={styles.presetsGrid}>
-        {TIMER_PRESETS.map((preset) => (
-          <TouchableOpacity
-            key={preset.label}
-            style={[
-              styles.presetCard,
-              selectedPreset === preset.value && styles.presetCardActive,
-            ]}
-            onPress={() => handlePresetSelect(preset.value)}
-          >
-            <Text
+  // Separate component for timer presets with dropdown style
+  const TimerPresets = () => {
+    // State for dropdown visibility
+    const [isFocusDropdownOpen, setIsFocusDropdownOpen] = useState(false);
+    const [isRestDropdownOpen, setIsRestDropdownOpen] = useState(false);
+    
+    // State for custom time inputs
+    const [customFocusTime, setCustomFocusTime] = useState("");
+    const [customRestTime, setCustomRestTime] = useState("");
+    
+    // Get the currently selected preset label for display
+    const getSelectedFocusLabel = () => {
+      if (isRest) {
+        // Find the matching preset or show the custom time
+        const matchingPreset = TIMER_PRESETS.find(p => p.value === selectedPreset);
+        if (matchingPreset) return matchingPreset.label;
+        
+        // If no match, must be custom time
+        const minutes = Math.floor(selectedPreset / 60);
+        return `${minutes}m`;
+      }
+      
+      // Find the matching preset
+      const matchingPreset = TIMER_PRESETS.find(p => p.value === selectedPreset);
+      if (matchingPreset) return matchingPreset.label;
+      
+      // If no match, must be custom time
+      const minutes = Math.floor(selectedPreset / 60);
+      return `${minutes}m`;
+    };
+    
+    const getSelectedRestLabel = () => {
+      if (!isRest) return "5m"; // Default rest time
+      
+      // If rest mode is active, show current selection
+      if (selectedPreset === REST_PRESET.value) return "5m";
+      if (selectedPreset === 10 * 60) return "10m";
+      if (selectedPreset === 15 * 60) return "15m";
+      
+      // If custom time
+      const minutes = Math.floor(selectedPreset / 60);
+      return `${minutes}m`;
+    };
+    
+    // Handlers for custom time inputs
+    const handleCustomFocusTimeChange = (text: string) => {
+      setCustomFocusTime(text);
+      const num = parseInt(text, 10);
+      if (!isNaN(num) && num > 0) {
+        const seconds = num * 60;
+        // Only apply immediately if focus is selected
+        if (!isRest) {
+          setSelectedPreset(seconds);
+          setTimerSeconds(seconds);
+          setCurrentMessage(getSessionStartMessage());
+          setIsRunning(false);
+        }
+        setIsFocusDropdownOpen(false);
+      }
+    };
+    
+    const handleCustomRestTimeChange = (text: string) => {
+      setCustomRestTime(text);
+      const num = parseInt(text, 10);
+      if (!isNaN(num) && num > 0) {
+        const seconds = num * 60;
+        // Only apply immediately if rest is selected
+        if (isRest) {
+          setSelectedPreset(seconds);
+          setTimerSeconds(seconds);
+          setCurrentMessage(getBreakMessage());
+          setIsRunning(false);
+        }
+        setIsRestDropdownOpen(false);
+      }
+    };
+    
+    // Handle focus preset selection
+    const handleFocusPresetSelect = (value: number) => {
+      if (!isRest) {
+        // Already in focus mode, just update the value
+        setSelectedPreset(value);
+        setTimerSeconds(value);
+      } else {
+        // Switch from rest to focus
+        setIsRest(false);
+        setSelectedPreset(value);
+        setTimerSeconds(value);
+        setCurrentMessage(getSessionStartMessage());
+      }
+      
+      // Close the dropdown
+      setIsFocusDropdownOpen(false);
+      
+      // If running, briefly pause
+      if (isRunning) {
+        setIsRunning(false);
+        setTimeout(() => {
+          setIsRunning(true);
+        }, 100);
+      }
+    };
+    
+    // Handle rest preset selection
+    const handleRestPresetSelect = (value: number) => {
+      if (isRest) {
+        // Already in rest mode, just update the value
+        setSelectedPreset(value);
+        setTimerSeconds(value);
+      } else {
+        // Switch from focus to rest
+        setIsRest(true);
+        setSelectedPreset(value);
+        setTimerSeconds(value);
+        setCurrentMessage(getBreakMessage());
+      }
+      
+      // Close the dropdown
+      setIsRestDropdownOpen(false);
+      
+      // If running, briefly pause
+      if (isRunning) {
+        setIsRunning(false);
+        setTimeout(() => {
+          setIsRunning(true);
+        }, 100);
+      }
+    };
+    
+    // Close dropdowns when clicking outside
+    const closeDropdowns = () => {
+      setIsFocusDropdownOpen(false);
+      setIsRestDropdownOpen(false);
+    };
+    
+    // Animation values for smooth dropdown transitions
+    const focusDropdownAnim = React.useRef(new Animated.Value(0)).current;
+    const restDropdownAnim = React.useRef(new Animated.Value(0)).current;
+    
+    // Using TouchableOpacity with activeOpacity={1} and onPress={closeDropdowns}
+    // to handle outside touches to close the dropdowns
+    
+    // Animate dropdown opening/closing with spring animation for more natural feel
+    React.useEffect(() => {
+      Animated.spring(focusDropdownAnim, {
+        toValue: isFocusDropdownOpen ? 1 : 0,
+        friction: 8, // Higher friction = less oscillation
+        tension: 40, // Lower tension = slower animation
+        useNativeDriver: false,
+      }).start();
+    }, [isFocusDropdownOpen, focusDropdownAnim]);
+    
+    React.useEffect(() => {
+      Animated.spring(restDropdownAnim, {
+        toValue: isRestDropdownOpen ? 1 : 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: false,
+      }).start();
+    }, [isRestDropdownOpen, restDropdownAnim]);
+    
+    // Calculate dropdown heights and opacity for animation
+    const focusDropdownHeight = focusDropdownAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 180], // Approximate height of the dropdown content
+    });
+    
+    const restDropdownHeight = restDropdownAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 180], // Approximate height of the dropdown content
+    });
+    
+    const focusDropdownOpacity = focusDropdownAnim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.8, 1], // Fade in faster than the height animation
+    });
+    
+    const restDropdownOpacity = restDropdownAnim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.8, 1],
+    });
+    
+    // Rest presets
+    const REST_PRESETS = [
+      { label: "5m", value: 5 * 60 },
+      { label: "10m", value: 10 * 60 },
+      { label: "15m", value: 15 * 60 },
+    ];
+
+    return (
+      <TouchableOpacity activeOpacity={1} onPress={closeDropdowns} style={styles.presetsContainer}>
+        <Text style={styles.presetsTitle}>Timer Settings</Text>
+        
+        <View style={styles.dropdownsContainer}>
+          {/* Focus Time Dropdown */}
+          <View style={styles.dropdownWrapper}>
+            <Text style={styles.dropdownLabel}>Focus</Text>
+            <TouchableOpacity
               style={[
-                styles.presetCardText,
-                selectedPreset === preset.value && styles.presetCardTextActive,
+                styles.dropdownHeader,
+                isFocusDropdownOpen && styles.dropdownHeaderActive,
+                !isRest && styles.dropdownHeaderSelected
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                setIsRestDropdownOpen(false);
+                setIsFocusDropdownOpen(!isFocusDropdownOpen);
+              }}
+            >
+              <Text style={styles.dropdownHeaderText}>
+                {getSelectedFocusLabel()}
+              </Text>
+              <Text style={styles.dropdownArrow}>{isFocusDropdownOpen ? "▲" : "▼"}</Text>
+            </TouchableOpacity>
+            
+            <Animated.View 
+              style={[
+                styles.dropdownContent,
+                { maxHeight: focusDropdownHeight, opacity: focusDropdownOpacity }
               ]}
             >
-              {preset.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[styles.presetCard, isRest && styles.presetCardActive]}
-          onPress={() => handlePresetSelect(REST_PRESET.value)}
-        >
-          <Text
-            style={[
-              styles.presetCardText,
-              isRest && styles.presetCardTextActive,
-            ]}
-          >
-            {REST_PRESET.label}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.customTimeContainer}>
-        <Text style={styles.customLabel}>Custom Time (minutes)</Text>
-        <TextInput
-          style={styles.customInput}
-          value={customTime}
-          onChangeText={handleCustomTimeChange}
-          keyboardType="numeric"
-          placeholder="e.g. 10"
-          maxLength={3}
-        />
-      </View>
-    </View>
-  );
+              {TIMER_PRESETS.map((preset) => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={[
+                    styles.dropdownItem,
+                    !isRest && selectedPreset === preset.value && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => handleFocusPresetSelect(preset.value)}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    !isRest && selectedPreset === preset.value && styles.dropdownItemTextActive,
+                  ]}>
+                    {preset.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              
+              <View style={styles.customInputContainer}>
+                <TextInput
+                  style={styles.dropdownCustomInput}
+                  value={customFocusTime}
+                  onChangeText={setCustomFocusTime}
+                  placeholder="Custom (min)"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  keyboardType="numeric"
+                  maxLength={3}
+                  onEndEditing={() => handleCustomFocusTimeChange(customFocusTime)}
+                />
+                <TouchableOpacity 
+                  style={styles.customApplyButton}
+                  onPress={() => handleCustomFocusTimeChange(customFocusTime)}
+                >
+                  <Text style={styles.customApplyText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+          
+          {/* Rest Time Dropdown */}
+          <View style={styles.dropdownWrapper}>
+            <Text style={styles.dropdownLabel}>Rest</Text>
+            <TouchableOpacity
+              style={[
+                styles.dropdownHeader,
+                isRestDropdownOpen && styles.dropdownHeaderActive,
+                isRest && styles.dropdownHeaderSelected
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                setIsFocusDropdownOpen(false);
+                setIsRestDropdownOpen(!isRestDropdownOpen);
+              }}
+            >
+              <Text style={styles.dropdownHeaderText}>
+                {getSelectedRestLabel()}
+              </Text>
+              <Text style={styles.dropdownArrow}>{isRestDropdownOpen ? "▲" : "▼"}</Text>
+            </TouchableOpacity>
+            
+            <Animated.View 
+              style={[
+                styles.dropdownContent,
+                { maxHeight: restDropdownHeight, opacity: restDropdownOpacity }
+              ]}
+            >
+              {REST_PRESETS.map((preset) => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={[
+                    styles.dropdownItem,
+                    isRest && selectedPreset === preset.value && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => handleRestPresetSelect(preset.value)}
+                >
+                  <Text style={[
+                    styles.dropdownItemText,
+                    isRest && selectedPreset === preset.value && styles.dropdownItemTextActive,
+                  ]}>
+                    {preset.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              
+              <View style={styles.customInputContainer}>
+                <TextInput
+                  style={styles.dropdownCustomInput}
+                  value={customRestTime}
+                  onChangeText={setCustomRestTime}
+                  placeholder="Custom (min)"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  keyboardType="numeric"
+                  maxLength={3}
+                  onEndEditing={() => handleCustomRestTimeChange(customRestTime)}
+                />
+                <TouchableOpacity 
+                  style={styles.customApplyButton}
+                  onPress={() => handleCustomRestTimeChange(customRestTime)}
+                >
+                  <Text style={styles.customApplyText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const SessionInfo = () => (
     <View style={styles.sessionInfo}>
@@ -633,6 +870,134 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     position: "relative",
+  },
+  
+  // New dropdown styles
+  dropdownsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 15,
+  },
+  
+  dropdownWrapper: {
+    width: '48%',
+  },
+  
+  dropdownLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 8,
+    paddingLeft: 4,
+  },
+  
+  dropdownHeader: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 15,
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+    elevation: 1,
+  },
+  
+  dropdownHeaderActive: {
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  
+  dropdownHeaderSelected: {
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderColor: 'rgba(255, 107, 107, 0.4)',
+  },
+  
+  dropdownHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#ffffff',
+    opacity: 0.8,
+  },
+  
+  dropdownContent: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    marginTop: 5,
+    overflow: 'hidden',
+    zIndex: 10,
+    position: 'absolute',
+    top: 45, // Position below the header
+    left: 0,
+    right: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+  },
+  
+  dropdownItemActive: {
+    backgroundColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  
+  dropdownItemText: {
+    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  
+  dropdownItemTextActive: {
+    fontWeight: '600',
+  },
+  
+  customInputContainer: {
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  
+  dropdownCustomInput: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    color: '#ffffff',
+    marginRight: 8,
+    fontSize: 14,
+  },
+  
+  customApplyButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  
+  customApplyText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
   },
 
   scrollContainer: {
