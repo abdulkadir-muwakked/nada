@@ -53,7 +53,7 @@ const NadaHomeScreen = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isRest, setIsRest] = useState(false);
   // Note: custom time handling is now managed within the TimerPresets component
-  
+
   const [currentSession, setCurrentSession] = useState<number>(0);
   const [sessionGoal, setSessionGoal] = useState<number>(4);
   const [streak, setStreak] = useState<number>(0);
@@ -338,45 +338,49 @@ const NadaHomeScreen = () => {
     // State for dropdown visibility
     const [isFocusDropdownOpen, setIsFocusDropdownOpen] = useState(false);
     const [isRestDropdownOpen, setIsRestDropdownOpen] = useState(false);
-    
+
     // State for custom time inputs
     const [customFocusTime, setCustomFocusTime] = useState("");
     const [customRestTime, setCustomRestTime] = useState("");
-    
+
     // Get the currently selected preset label for display
     const getSelectedFocusLabel = () => {
       if (isRest) {
         // Find the matching preset or show the custom time
-        const matchingPreset = TIMER_PRESETS.find(p => p.value === selectedPreset);
+        const matchingPreset = TIMER_PRESETS.find(
+          (p) => p.value === selectedPreset
+        );
         if (matchingPreset) return matchingPreset.label;
-        
+
         // If no match, must be custom time
         const minutes = Math.floor(selectedPreset / 60);
         return `${minutes}m`;
       }
-      
+
       // Find the matching preset
-      const matchingPreset = TIMER_PRESETS.find(p => p.value === selectedPreset);
+      const matchingPreset = TIMER_PRESETS.find(
+        (p) => p.value === selectedPreset
+      );
       if (matchingPreset) return matchingPreset.label;
-      
+
       // If no match, must be custom time
       const minutes = Math.floor(selectedPreset / 60);
       return `${minutes}m`;
     };
-    
+
     const getSelectedRestLabel = () => {
       if (!isRest) return "5m"; // Default rest time
-      
+
       // If rest mode is active, show current selection
       if (selectedPreset === REST_PRESET.value) return "5m";
       if (selectedPreset === 10 * 60) return "10m";
       if (selectedPreset === 15 * 60) return "15m";
-      
+
       // If custom time
       const minutes = Math.floor(selectedPreset / 60);
       return `${minutes}m`;
     };
-    
+
     // Handlers for custom time inputs
     const handleCustomFocusTimeChange = (text: string) => {
       setCustomFocusTime(text);
@@ -393,7 +397,7 @@ const NadaHomeScreen = () => {
         setIsFocusDropdownOpen(false);
       }
     };
-    
+
     const handleCustomRestTimeChange = (text: string) => {
       setCustomRestTime(text);
       const num = parseInt(text, 10);
@@ -409,7 +413,7 @@ const NadaHomeScreen = () => {
         setIsRestDropdownOpen(false);
       }
     };
-    
+
     // Handle focus preset selection
     const handleFocusPresetSelect = (value: number) => {
       if (!isRest) {
@@ -423,10 +427,10 @@ const NadaHomeScreen = () => {
         setTimerSeconds(value);
         setCurrentMessage(getSessionStartMessage());
       }
-      
+
       // Close the dropdown
       setIsFocusDropdownOpen(false);
-      
+
       // If running, briefly pause
       if (isRunning) {
         setIsRunning(false);
@@ -435,7 +439,7 @@ const NadaHomeScreen = () => {
         }, 100);
       }
     };
-    
+
     // Handle rest preset selection
     const handleRestPresetSelect = (value: number) => {
       if (isRest) {
@@ -449,10 +453,10 @@ const NadaHomeScreen = () => {
         setTimerSeconds(value);
         setCurrentMessage(getBreakMessage());
       }
-      
+
       // Close the dropdown
       setIsRestDropdownOpen(false);
-      
+
       // If running, briefly pause
       if (isRunning) {
         setIsRunning(false);
@@ -461,20 +465,20 @@ const NadaHomeScreen = () => {
         }, 100);
       }
     };
-    
+
     // Close dropdowns when clicking outside
     const closeDropdowns = () => {
       setIsFocusDropdownOpen(false);
       setIsRestDropdownOpen(false);
     };
-    
+
     // Animation values for smooth dropdown transitions
     const focusDropdownAnim = React.useRef(new Animated.Value(0)).current;
     const restDropdownAnim = React.useRef(new Animated.Value(0)).current;
-    
+
     // Using TouchableOpacity with activeOpacity={1} and onPress={closeDropdowns}
     // to handle outside touches to close the dropdowns
-    
+
     // Animate dropdown opening/closing with spring animation for more natural feel
     React.useEffect(() => {
       Animated.spring(focusDropdownAnim, {
@@ -484,7 +488,7 @@ const NadaHomeScreen = () => {
         useNativeDriver: false,
       }).start();
     }, [isFocusDropdownOpen, focusDropdownAnim]);
-    
+
     React.useEffect(() => {
       Animated.spring(restDropdownAnim, {
         toValue: isRestDropdownOpen ? 1 : 0,
@@ -493,28 +497,28 @@ const NadaHomeScreen = () => {
         useNativeDriver: false,
       }).start();
     }, [isRestDropdownOpen, restDropdownAnim]);
-    
+
     // Calculate dropdown heights and opacity for animation
     const focusDropdownHeight = focusDropdownAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [0, 180], // Approximate height of the dropdown content
     });
-    
+
     const restDropdownHeight = restDropdownAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [0, 180], // Approximate height of the dropdown content
     });
-    
+
     const focusDropdownOpacity = focusDropdownAnim.interpolate({
       inputRange: [0, 0.5, 1],
       outputRange: [0, 0.8, 1], // Fade in faster than the height animation
     });
-    
+
     const restDropdownOpacity = restDropdownAnim.interpolate({
       inputRange: [0, 0.5, 1],
       outputRange: [0, 0.8, 1],
     });
-    
+
     // Rest presets
     const REST_PRESETS = [
       { label: "5m", value: 5 * 60 },
@@ -523,9 +527,13 @@ const NadaHomeScreen = () => {
     ];
 
     return (
-      <TouchableOpacity activeOpacity={1} onPress={closeDropdowns} style={styles.presetsContainer}>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={closeDropdowns}
+        style={styles.presetsContainer}
+      >
         <Text style={styles.presetsTitle}>Timer Settings</Text>
-        
+
         <View style={styles.dropdownsContainer}>
           {/* Focus Time Dropdown */}
           <View style={styles.dropdownWrapper}>
@@ -534,7 +542,7 @@ const NadaHomeScreen = () => {
               style={[
                 styles.dropdownHeader,
                 isFocusDropdownOpen && styles.dropdownHeaderActive,
-                !isRest && styles.dropdownHeaderSelected
+                !isRest && styles.dropdownHeaderSelected,
               ]}
               onPress={(e) => {
                 e.stopPropagation();
@@ -545,13 +553,18 @@ const NadaHomeScreen = () => {
               <Text style={styles.dropdownHeaderText}>
                 {getSelectedFocusLabel()}
               </Text>
-              <Text style={styles.dropdownArrow}>{isFocusDropdownOpen ? "▲" : "▼"}</Text>
+              <Text style={styles.dropdownArrow}>
+                {isFocusDropdownOpen ? "▲" : "▼"}
+              </Text>
             </TouchableOpacity>
-            
-            <Animated.View 
+
+            <Animated.View
               style={[
                 styles.dropdownContent,
-                { maxHeight: focusDropdownHeight, opacity: focusDropdownOpacity }
+                {
+                  maxHeight: focusDropdownHeight,
+                  opacity: focusDropdownOpacity,
+                },
               ]}
             >
               {TIMER_PRESETS.map((preset) => (
@@ -559,19 +572,25 @@ const NadaHomeScreen = () => {
                   key={preset.label}
                   style={[
                     styles.dropdownItem,
-                    !isRest && selectedPreset === preset.value && styles.dropdownItemActive,
+                    !isRest &&
+                      selectedPreset === preset.value &&
+                      styles.dropdownItemActive,
                   ]}
                   onPress={() => handleFocusPresetSelect(preset.value)}
                 >
-                  <Text style={[
-                    styles.dropdownItemText,
-                    !isRest && selectedPreset === preset.value && styles.dropdownItemTextActive,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      !isRest &&
+                        selectedPreset === preset.value &&
+                        styles.dropdownItemTextActive,
+                    ]}
+                  >
                     {preset.label}
                   </Text>
                 </TouchableOpacity>
               ))}
-              
+
               <View style={styles.customInputContainer}>
                 <TextInput
                   style={styles.dropdownCustomInput}
@@ -581,9 +600,11 @@ const NadaHomeScreen = () => {
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   keyboardType="numeric"
                   maxLength={3}
-                  onEndEditing={() => handleCustomFocusTimeChange(customFocusTime)}
+                  onEndEditing={() =>
+                    handleCustomFocusTimeChange(customFocusTime)
+                  }
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.customApplyButton}
                   onPress={() => handleCustomFocusTimeChange(customFocusTime)}
                 >
@@ -592,7 +613,7 @@ const NadaHomeScreen = () => {
               </View>
             </Animated.View>
           </View>
-          
+
           {/* Rest Time Dropdown */}
           <View style={styles.dropdownWrapper}>
             <Text style={styles.dropdownLabel}>Rest</Text>
@@ -600,7 +621,7 @@ const NadaHomeScreen = () => {
               style={[
                 styles.dropdownHeader,
                 isRestDropdownOpen && styles.dropdownHeaderActive,
-                isRest && styles.dropdownHeaderSelected
+                isRest && styles.dropdownHeaderSelected,
               ]}
               onPress={(e) => {
                 e.stopPropagation();
@@ -611,13 +632,15 @@ const NadaHomeScreen = () => {
               <Text style={styles.dropdownHeaderText}>
                 {getSelectedRestLabel()}
               </Text>
-              <Text style={styles.dropdownArrow}>{isRestDropdownOpen ? "▲" : "▼"}</Text>
+              <Text style={styles.dropdownArrow}>
+                {isRestDropdownOpen ? "▲" : "▼"}
+              </Text>
             </TouchableOpacity>
-            
-            <Animated.View 
+
+            <Animated.View
               style={[
                 styles.dropdownContent,
-                { maxHeight: restDropdownHeight, opacity: restDropdownOpacity }
+                { maxHeight: restDropdownHeight, opacity: restDropdownOpacity },
               ]}
             >
               {REST_PRESETS.map((preset) => (
@@ -625,19 +648,25 @@ const NadaHomeScreen = () => {
                   key={preset.label}
                   style={[
                     styles.dropdownItem,
-                    isRest && selectedPreset === preset.value && styles.dropdownItemActive,
+                    isRest &&
+                      selectedPreset === preset.value &&
+                      styles.dropdownItemActive,
                   ]}
                   onPress={() => handleRestPresetSelect(preset.value)}
                 >
-                  <Text style={[
-                    styles.dropdownItemText,
-                    isRest && selectedPreset === preset.value && styles.dropdownItemTextActive,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      isRest &&
+                        selectedPreset === preset.value &&
+                        styles.dropdownItemTextActive,
+                    ]}
+                  >
                     {preset.label}
                   </Text>
                 </TouchableOpacity>
               ))}
-              
+
               <View style={styles.customInputContainer}>
                 <TextInput
                   style={styles.dropdownCustomInput}
@@ -647,9 +676,11 @@ const NadaHomeScreen = () => {
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   keyboardType="numeric"
                   maxLength={3}
-                  onEndEditing={() => handleCustomRestTimeChange(customRestTime)}
+                  onEndEditing={() =>
+                    handleCustomRestTimeChange(customRestTime)
+                  }
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.customApplyButton}
                   onPress={() => handleCustomRestTimeChange(customRestTime)}
                 >
@@ -871,74 +902,74 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "relative",
   },
-  
+
   // New dropdown styles
   dropdownsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     marginBottom: 15,
   },
-  
+
   dropdownWrapper: {
-    width: '48%',
+    width: "48%",
   },
-  
+
   dropdownLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
     marginBottom: 8,
     paddingLeft: 4,
   },
-  
+
   dropdownHeader: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 15,
     padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.18,
     shadowRadius: 1.0,
     elevation: 1,
   },
-  
+
   dropdownHeaderActive: {
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: "rgba(255, 255, 255, 0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
   },
-  
+
   dropdownHeaderSelected: {
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
-    borderColor: 'rgba(255, 107, 107, 0.4)',
+    backgroundColor: "rgba(255, 107, 107, 0.2)",
+    borderColor: "rgba(255, 107, 107, 0.4)",
   },
-  
+
   dropdownHeaderText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
-  
+
   dropdownArrow: {
     fontSize: 12,
-    color: '#ffffff',
+    color: "#ffffff",
     opacity: 0.8,
   },
-  
+
   dropdownContent: {
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 12,
     marginTop: 5,
-    overflow: 'hidden',
+    overflow: "hidden",
     zIndex: 10,
-    position: 'absolute',
+    position: "absolute",
     top: 45, // Position below the header
     left: 0,
     right: 0,
@@ -948,55 +979,55 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  
+
   dropdownItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
+    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    alignItems: "center",
   },
-  
+
   dropdownItemActive: {
-    backgroundColor: 'rgba(255, 107, 107, 0.3)',
+    backgroundColor: "rgba(255, 107, 107, 0.3)",
   },
-  
+
   dropdownItemText: {
     fontSize: 15,
-    color: '#ffffff',
-    fontWeight: '500',
+    color: "#ffffff",
+    fontWeight: "500",
   },
-  
+
   dropdownItemTextActive: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  
+
   customInputContainer: {
     padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  
+
   dropdownCustomInput: {
     flex: 1,
     padding: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 8,
-    color: '#ffffff',
+    color: "#ffffff",
     marginRight: 8,
     fontSize: 14,
   },
-  
+
   customApplyButton: {
-    backgroundColor: 'rgba(255, 107, 107, 0.8)',
+    backgroundColor: "rgba(255, 107, 107, 0.8)",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
-  
+
   customApplyText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
     fontSize: 14,
   },
 
