@@ -71,7 +71,12 @@ const NadaHomeScreen = () => {
   useEffect(() => {
     // Set initial timer values
     setTimerSeconds(focusDuration);
-    console.log("Initial timer setup - focus duration:", focusDuration, "break duration:", breakDuration);
+    console.log(
+      "Initial timer setup - focus duration:",
+      focusDuration,
+      "break duration:",
+      breakDuration
+    );
   }, [focusDuration, breakDuration]);
 
   // Initialize streak and session data when app loads
@@ -124,7 +129,10 @@ const NadaHomeScreen = () => {
         setTimerSeconds(breakDuration);
         // Update message for break time
         setCurrentMessage(getBreakMessage());
-        console.log("Focus session completed, switching to break mode with duration:", breakDuration);
+        console.log(
+          "Focus session completed, switching to break mode with duration:",
+          breakDuration
+        );
 
         // Record a completed focus session and update streak and sessions count
         const updateCounts = async () => {
@@ -312,13 +320,13 @@ const NadaHomeScreen = () => {
     const normalizedProgress = isRest
       ? 1 - timerSeconds / breakDuration // Break mode: starts empty (0), ends full (1)
       : timerSeconds / focusDuration; // Focus mode: starts full (1), ends empty (0)
-      
-    console.log("Progress calculation:", { 
-      isRest, 
-      timerSeconds, 
-      focusDuration, 
-      breakDuration, 
-      progress: normalizedProgress 
+
+    console.log("Progress calculation:", {
+      isRest,
+      timerSeconds,
+      focusDuration,
+      breakDuration,
+      progress: normalizedProgress,
     });
 
     // Get label based on current state with expressive language
@@ -404,7 +412,7 @@ const NadaHomeScreen = () => {
         // Always update focus duration
         setFocusDuration(seconds);
         console.log("Custom focus duration set to:", seconds);
-        
+
         // Only apply immediately if focus is selected
         if (!isRest) {
           setSelectedPreset(seconds);
@@ -424,7 +432,7 @@ const NadaHomeScreen = () => {
         // Always update break duration
         setBreakDuration(seconds);
         console.log("Custom break duration set to:", seconds);
-        
+
         // Only apply immediately if rest is selected
         if (isRest) {
           setSelectedPreset(seconds);
@@ -441,7 +449,7 @@ const NadaHomeScreen = () => {
       // Always update the focus duration
       setFocusDuration(value);
       console.log("Focus duration updated to:", value);
-      
+
       if (!isRest) {
         // Already in focus mode, update the current timer
         setSelectedPreset(value);
@@ -471,7 +479,7 @@ const NadaHomeScreen = () => {
       // Always update the break duration
       setBreakDuration(value);
       console.log("Break duration updated to:", value);
-      
+
       if (isRest) {
         // Already in rest mode, update the current timer
         setSelectedPreset(value);
@@ -609,7 +617,8 @@ const NadaHomeScreen = () => {
                   <Text
                     style={[
                       styles.dropdownItemText,
-                      focusDuration === preset.value && styles.dropdownItemTextActive,
+                      focusDuration === preset.value &&
+                        styles.dropdownItemTextActive,
                     ]}
                   >
                     {preset.label}
@@ -681,7 +690,8 @@ const NadaHomeScreen = () => {
                   <Text
                     style={[
                       styles.dropdownItemText,
-                      breakDuration === preset.value && styles.dropdownItemTextActive,
+                      breakDuration === preset.value &&
+                        styles.dropdownItemTextActive,
                     ]}
                   >
                     {preset.label}
