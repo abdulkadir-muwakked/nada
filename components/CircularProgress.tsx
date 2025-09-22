@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, memo } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
@@ -7,19 +7,19 @@ import Svg, { Circle } from "react-native-svg";
  * This component displays a circular progress indicator that can show progress in two modes:
  * - focus mode: ring decreases from full to empty as timer counts down
  * - break mode: ring increases from empty to full as timer counts down
- * 
+ *
  * The parent component should provide the appropriate progress value based on mode:
  * - For focus mode: progress = remainingTime / totalTime (decreases 1→0)
  * - For break mode: progress = 1 - (remainingTime / totalTime) (increases 0→1)
  */
 type CircularProgressProps = {
-  progress: number;  // Value between 0 and 1, normalized based on mode (see above)
-  mode: "focus" | "break";  // Indicates the timer mode - affects certain behaviors
-  size: number;  // Size of the circle in pixels
-  strokeWidth: number;  // Width of the progress stroke
-  backgroundColor?: string;  // Color of the background circle
-  progressColor?: string;  // Color of the progress indicator
-  animated?: boolean;  // Whether transitions should be animated
+  progress: number; // Value between 0 and 1, normalized based on mode (see above)
+  mode: "focus" | "break"; // Indicates the timer mode - affects certain behaviors
+  size: number; // Size of the circle in pixels
+  strokeWidth: number; // Width of the progress stroke
+  backgroundColor?: string; // Color of the background circle
+  progressColor?: string; // Color of the progress indicator
+  animated?: boolean; // Whether transitions should be animated
 };
 
 const CircularProgress = ({
@@ -34,40 +34,42 @@ const CircularProgress = ({
   // Create an animated value that will drive the circular progress
   // Ensure initial value is within valid range (0-1)
   const initialProgress = Math.max(0, Math.min(1, progress));
-  const animatedProgressRef = useRef(new Animated.Value(initialProgress)).current;
+  const animatedProgressRef = useRef(
+    new Animated.Value(initialProgress)
+  ).current;
 
   // Calculate properties
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  
+
   // Use progress directly - the parent component already adjusts it based on mode:
   // - Focus mode: progress decreases from 1 to 0 (starts full, goes to empty)
   // - Break mode: progress increases from 0 to 1 (starts empty, goes to full)
   const adjustedProgress = progress;
-  
+
   // Reset the animation when mode changes to avoid awkward transitions
   const prevModeRef = useRef(mode);
   const prevProgressRef = useRef(progress);
-  
+
   useEffect(() => {
     if (prevModeRef.current !== mode) {
       // Mode changed - the parent component already sends the correct progress value
       // for each mode, so we can just use it directly to ensure smooth transitions
-      
+
       // Reset animation immediately to the new progress value
       animatedProgressRef.setValue(progress);
-      
+
       // Update the refs
       prevModeRef.current = mode;
       prevProgressRef.current = progress;
     }
   }, [mode, progress, animatedProgressRef]);
-  
+
   // Update animated value when progress changes
   useEffect(() => {
     // For smooth transitions, don't stop running animations when small progress updates occur
     // This prevents jerky movement especially during countdown
-    
+
     if (animated) {
       // Use a shorter duration for smoother ticking during countdown
       // but still noticeable enough to see the progress
@@ -83,16 +85,16 @@ const CircularProgress = ({
       animatedProgressRef.setValue(adjustedProgress);
     }
   }, [adjustedProgress, animated, animatedProgressRef]);
-  
+
   // Calculate stroke dash offset from progress
   const strokeDashoffset = animatedProgressRef.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0], // 0 = empty circle (start of break mode), circumference = full circle (start of focus mode)
-    extrapolate: 'clamp', // Prevent values outside of 0-1 range
+    extrapolate: "clamp", // Prevent values outside of 0-1 range
   });
-  
+
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-  
+
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size} style={styles.svg}>
@@ -105,7 +107,7 @@ const CircularProgress = ({
           stroke={backgroundColor}
           fill="rgba(255, 255, 255, 0.05)" // Slightly visible fill to match app design
         />
-        
+
         {/* Progress Circle - dynamic part that animates */}
         <AnimatedCircle
           cx={size / 2}
@@ -130,12 +132,12 @@ const CircularProgress = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
   },
   svg: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,

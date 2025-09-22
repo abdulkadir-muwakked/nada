@@ -11,11 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import CircularProgress from "../../components/CircularProgress";
 import NadaCharacter from "../../components/NadaCharacter";
 import NadaLogo from "../../components/NadaLogo";
 import { SignOutButton } from "../../components/SignOutButton";
 import SpeechBubble from "../../components/SpeechBubble";
-import CircularProgress from "../../components/CircularProgress";
 import {
   getBreakMessage,
   getResumeMessage,
@@ -158,14 +158,14 @@ const NadaHomeScreen = () => {
       const seconds = num * 60;
       setSelectedPreset(seconds);
       setTimerSeconds(seconds);
-      
+
       // Always reset to focus mode when custom time is entered
       // This provides consistent behavior
       setIsRest(false);
-      
+
       // Update message for custom time
       setCurrentMessage(getSessionStartMessage());
-      
+
       // Reset running state
       setIsRunning(false);
     }
@@ -184,7 +184,7 @@ const NadaHomeScreen = () => {
 
     // Update message when user changes timer preset
     updateMessageBasedOnState(isRunning, isRestPreset);
-    
+
     // If running, briefly pause to ensure clean transition
     if (isRunning) {
       setIsRunning(false);
@@ -303,12 +303,12 @@ const NadaHomeScreen = () => {
       setCurrentMessage(getSessionStartMessage());
       console.log("Switched to focus mode");
     }
-    
+
     // Force update the timer display to reflect the new mode immediately
     // This helps ensure proper visual feedback
     setTimeout(() => {
       // This triggers a re-render with the new mode properly applied
-      setTimerSeconds(prev => prev);
+      setTimerSeconds((prev) => prev);
     }, 0);
 
     // If the timer was already running, restart it in the new mode after a brief pause
@@ -332,10 +332,10 @@ const NadaHomeScreen = () => {
     // Calculate normalized progress based on timer mode
     // Focus mode: progress = remaining time / total time (starts at 1, ends at 0)
     // Break mode: progress = elapsed time / total time = 1 - (remaining time / total time) (starts at 0, ends at 1)
-    const normalizedProgress = isRest 
-      ? 1 - (timerSeconds / selectedPreset)  // Break mode: starts empty (0), ends full (1)
-      : timerSeconds / selectedPreset;       // Focus mode: starts full (1), ends empty (0)
-    
+    const normalizedProgress = isRest
+      ? 1 - timerSeconds / selectedPreset // Break mode: starts empty (0), ends full (1)
+      : timerSeconds / selectedPreset; // Focus mode: starts full (1), ends empty (0)
+
     // Get label based on current state with expressive language
     // This ensures the correct label is always displayed based on the actual mode
     const getTimerLabel = () => {
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     height: 180,
     marginBottom: 10,
   },
-  
+
   progressContainer: {
     width: 180,
     height: 180,
