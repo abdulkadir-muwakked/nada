@@ -4,7 +4,7 @@ import React from "react";
 import WelcomeScreen from "../components/WelcomeScreen";
 
 export default function Page() {
-  // Use ClerkLoaded component to ensure Clerk is ready before using useAuth
+  // Use ClerkLoaded to ensure we only attempt to use useAuth when Clerk is ready
   return (
     <ClerkLoaded>
       <AuthenticatedRoute />

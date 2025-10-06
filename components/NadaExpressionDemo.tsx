@@ -55,7 +55,7 @@ const NadaExpressionDemo: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nada's Expressions</Text>
+      <Text style={styles.title}>{"Nada's Expressions"}</Text>
 
       {/* Character display area */}
       <View style={styles.characterArea}>

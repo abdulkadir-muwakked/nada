@@ -1,4 +1,4 @@
-package com.anonymous.nada
+package com.mycompany.nada
 
 import android.app.Application
 import android.content.res.Configuration

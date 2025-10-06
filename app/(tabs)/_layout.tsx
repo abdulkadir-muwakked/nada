@@ -18,6 +18,7 @@ export default function Layout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="premium-messages" />
       <Tabs.Screen name="nada-expressions" />
+      <Tabs.Screen name="test-crypto" />
       {isDevelopment && (
         <>
           <Tabs.Screen name="ad-test" />

@@ -1,5 +1,13 @@
 // Type definitions for Nada app components
-import { StyleProp, TextStyle, ViewStyle } from "react-native";
+import {
+  GestureResponderEvent,
+  StyleProp,
+  TextStyle,
+  ViewStyle,
+} from "react-native";
+
+// React Native Event Types
+export type ReactNativeEvent = GestureResponderEvent;
 
 // User Type for premium features
 export interface User {

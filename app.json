@@ -9,7 +9,10 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mycompany.nada"
+      "bundleIdentifier": "com.mycompany.nada",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +20,8 @@
         "backgroundColor": "#1a1a2e"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.nada"
+      "package": "com.mycompany.nada",
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "WAKE_LOCK"]
     },
     "web": {
       "bundler": "metro",
@@ -42,8 +46,16 @@
           "iosAppId": "ca-app-pub-1609492440808781~3500829830",
           "androidAppId": "ca-app-pub-1609492440808781~3500829830"
         }
-      ]
+      ],
+      "expo-notifications",
+      "expo-background-task",
+      "expo-dev-client"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "447f8604-d80a-4cb6-9c75-a451a142620d"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

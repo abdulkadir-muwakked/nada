@@ -1,0 +1,132 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "Launch iOS Dev Client",
+      "command": "./scripts/launch-dev-client.sh",
+      "args": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Run Dev Build Helper",
+      "command": "./scripts/dev-build-helper.sh",
+      "args": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Create iOS Dev Build (Local)",
+      "command": "npx expo run:ios",
+      "args": [],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Create Android Dev Build (Local)",
+      "command": "npx expo run:android",
+      "args": [],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Create iOS Dev Build (Cloud)",
+      "command": "eas build --profile development-simulator --platform ios",
+      "args": [],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Create Android Dev Build (Cloud)",
+      "command": "eas build --profile development --platform android",
+      "args": [],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Download Cloud Builds",
+      "command": "./scripts/dev-build-helper.sh",
+      "args": [],
+      "group": "build",
+      "options": {
+        "env": {
+          "AUTO_OPTION": "3"
+        }
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Verify Notifications",
+      "command": "./scripts/verify-notifications.sh",
+      "args": [],
+      "group": "test",
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Start Dev Client",
+      "command": "npx expo start --dev-client",
+      "args": [],
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

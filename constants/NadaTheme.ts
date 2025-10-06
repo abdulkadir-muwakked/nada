@@ -9,6 +9,7 @@ export const NadaTheme = {
     overlayBorder: "rgba(255, 255, 255, 0.2)",
     highlight: "rgba(255, 107, 107, 0.15)",
     highlightBorder: "rgba(255, 107, 107, 0.3)",
+    error: "#ff3333",
   },
 
   typography: {
