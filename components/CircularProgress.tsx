@@ -71,18 +71,26 @@ const CircularProgress = ({
     // This prevents jerky movement especially during countdown
 
     if (animated) {
+      const previousProgress = prevProgressRef.current;
+      const clampedProgress = Math.max(0, Math.min(1, adjustedProgress));
+      const delta = Math.abs(clampedProgress - previousProgress);
+      const duration = Math.max(120, Math.min(650, delta * 900));
+
       // Use a shorter duration for smoother ticking during countdown
       // but still noticeable enough to see the progress
       Animated.timing(animatedProgressRef, {
-        toValue: adjustedProgress,
-        duration: 500, // Fast enough for smooth progress but still visible
+        toValue: clampedProgress,
+        duration,
         useNativeDriver: true, // Use native driver for better performance
         // Linear easing ensures consistent speed throughout the animation
         easing: (t) => t, // Linear easing function
       }).start();
+
+      prevProgressRef.current = clampedProgress;
     } else {
       // Immediately set the value without animation
       animatedProgressRef.setValue(adjustedProgress);
+      prevProgressRef.current = adjustedProgress;
     }
   }, [adjustedProgress, animated, animatedProgressRef]);
 

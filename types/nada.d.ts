@@ -25,6 +25,8 @@ export interface NadaThemeColors {
   overlayBorder: string;
   highlight: string;
   highlightBorder: string;
+  accent: string;
+  error: string;
 }
 
 export interface NadaTypography {

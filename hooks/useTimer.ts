@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
+import * as Haptics from "expo-haptics";
 import {
   getBreakMessage,
   getResumeMessage,
@@ -14,6 +15,7 @@ import {
   cancelAllScheduledNotifications,
   requestNotificationPermissions,
   scheduleTimerNotification,
+  sendTimerCompleteNotification,
 } from "../utils/notificationService";
 import { formatTime } from "../utils/timer/timerUtils";
 import {
@@ -31,6 +33,9 @@ export const useTimer = ({
   initialFocusDuration = TIMER_PRESETS[1].value, // Default 25m
   initialBreakDuration = DEFAULT_REST_PRESET.value, // Default 5m
 }: UseTimerProps = {}): UseTimerReturn => {
+  const initialFocusRef = useRef(initialFocusDuration);
+  const initialBreakRef = useRef(initialBreakDuration);
+
   // Reference to app state
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -61,25 +66,62 @@ export const useTimer = ({
   // Refs for timer management
   const timerStateRef = useRef<TimerState | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimestampRef = useRef<number | null>(null);
+  const latestTimerSecondsRef = useRef<number>(selectedPreset);
+  const completionTriggeredRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    latestTimerSecondsRef.current = timerSeconds;
+  }, [timerSeconds]);
+
+  useEffect(() => {
+    if (isRunning) {
+      completionTriggeredRef.current = false;
+    }
+  }, [isRunning]);
 
   // Helper function to keep timer state synchronized
-  const synchronizeTimerState = async () => {
+  const synchronizeTimerState = async (overrides: Partial<TimerState> = {}) => {
     if (!timerStateRef.current) {
       timerStateRef.current = initializeTimerState();
     }
 
+    const isRunningState = overrides.isRunning ?? isRunning;
+    const isRestState = overrides.isRest ?? isRest;
+    const focusValue = overrides.focusDuration ?? focusDuration;
+    const breakValue = overrides.breakDuration ?? breakDuration;
+    const secondsValue = overrides.timerSeconds ?? timerSeconds;
+    const notificationValue = overrides.notificationId ?? notificationId;
+    const activeDuration = isRestState ? breakValue : focusValue;
+
+    let startTimeValue: number | null;
+    if (overrides.startTime !== undefined) {
+      startTimeValue = overrides.startTime;
+    } else if (isRunningState && secondsValue > 0) {
+      startTimeValue =
+        startTimestampRef.current ??
+        Date.now() - (activeDuration - secondsValue) * 1000;
+    } else {
+      startTimeValue = null;
+    }
+
+    if (isRunningState && startTimeValue !== null) {
+      startTimestampRef.current = startTimeValue;
+    }
+
+    if (!isRunningState) {
+      startTimestampRef.current = null;
+    }
+
     const currentState: TimerState = {
       ...timerStateRef.current,
-      isRunning,
-      isRest,
-      timerSeconds,
-      focusDuration,
-      breakDuration,
-      startTime: isRunning
-        ? Date.now() -
-          ((isRest ? breakDuration : focusDuration) - timerSeconds) * 1000
-        : null,
-      notificationId,
+      isRunning: isRunningState,
+      isRest: isRestState,
+      timerSeconds: secondsValue,
+      focusDuration: focusValue,
+      breakDuration: breakValue,
+      startTime: startTimeValue,
+      notificationId: notificationValue,
       lastActiveTime: Date.now(),
     };
 
@@ -90,15 +132,19 @@ export const useTimer = ({
 
   // Initialize notification permissions, streak data, and timer state
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
       try {
         // Request notification permissions
         const hasPermission = await requestNotificationPermissions();
+        if (!isMounted) return;
         setNotificationsPermission(hasPermission);
         console.log("Notification permission status:", hasPermission);
 
         // Load saved timer state if exists
         const savedTimerState = await loadTimerState();
+        if (!isMounted) return;
         if (savedTimerState) {
           console.log("Restored timer state:", savedTimerState);
 
@@ -109,30 +155,45 @@ export const useTimer = ({
           setBreakDuration(savedTimerState.breakDuration);
 
           // Calculate remaining time based on when the timer was last active
+          let restoredSeconds: number;
+          let restoredStartTime: number | null = null;
+
           if (savedTimerState.isRunning && savedTimerState.startTime) {
-            const remainingTime = calculateRemainingTime(
+            restoredSeconds = calculateRemainingTime(
               savedTimerState.startTime,
               savedTimerState.isRest
                 ? savedTimerState.breakDuration
                 : savedTimerState.focusDuration,
               savedTimerState.lastActiveTime
             );
-            setTimerSeconds(remainingTime);
+            restoredStartTime = savedTimerState.startTime;
           } else {
-            setTimerSeconds(
-              savedTimerState.isRest
-                ? savedTimerState.breakDuration
-                : savedTimerState.focusDuration
-            );
+            restoredSeconds = savedTimerState.isRest
+              ? savedTimerState.breakDuration
+              : savedTimerState.focusDuration;
           }
 
+          setTimerSeconds(restoredSeconds);
+          latestTimerSecondsRef.current = restoredSeconds;
+          startTimestampRef.current =
+            savedTimerState.isRunning && restoredStartTime
+              ? restoredStartTime
+              : null;
+
           // Store in our ref for later use
-          timerStateRef.current = savedTimerState;
+          timerStateRef.current = {
+            ...savedTimerState,
+            timerSeconds: restoredSeconds,
+            startTime:
+              savedTimerState.isRunning && restoredStartTime
+                ? restoredStartTime
+                : null,
+          };
         } else {
           // Initialize timer state with defaults
           const initialState = initializeTimerState();
-          initialState.focusDuration = focusDuration;
-          initialState.breakDuration = breakDuration;
+          initialState.focusDuration = initialFocusRef.current;
+          initialState.breakDuration = initialBreakRef.current;
           timerStateRef.current = initialState;
           await saveTimerState(initialState);
         }
@@ -142,7 +203,10 @@ export const useTimer = ({
     };
 
     loadData();
-  }, [breakDuration, focusDuration]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Set up app state change listener for background timer handling
   useEffect(() => {
@@ -161,17 +225,30 @@ export const useTimer = ({
         timerStateRef.current = initializeTimerState();
       }
 
+      const baseState = timerStateRef.current || initializeTimerState();
+      const activeDuration = isRest ? breakDuration : focusDuration;
+      const shouldTrackStart = isRunning && timerSeconds > 0;
+      const derivedStartTime = shouldTrackStart
+        ? startTimestampRef.current ??
+          Date.now() - (activeDuration - timerSeconds) * 1000
+        : null;
+
+      if (shouldTrackStart && derivedStartTime !== null) {
+        startTimestampRef.current = derivedStartTime;
+      }
+
+      if (!shouldTrackStart) {
+        startTimestampRef.current = null;
+      }
+
       const currentTimerState: TimerState = {
-        ...timerStateRef.current,
+        ...baseState,
         isRunning,
         isRest,
         timerSeconds,
         focusDuration,
         breakDuration,
-        startTime: isRunning
-          ? Date.now() -
-            ((isRest ? breakDuration : focusDuration) - timerSeconds) * 1000
-          : null,
+        startTime: derivedStartTime,
         notificationId,
         lastActiveTime: Date.now(),
       };
@@ -187,6 +264,7 @@ export const useTimer = ({
 
         // Update our local state
         timerStateRef.current = updatedState;
+        startTimestampRef.current = updatedState.startTime;
 
         // App going to background - schedule notification if timer is running
         if (
@@ -234,6 +312,7 @@ export const useTimer = ({
           setIsRunning(updatedState.isRunning);
           setIsRest(updatedState.isRest);
           setTimerSeconds(updatedState.timerSeconds);
+          latestTimerSecondsRef.current = updatedState.timerSeconds;
 
           // Update timer state
           if (updatedState.isRest !== isRest) {
@@ -244,6 +323,13 @@ export const useTimer = ({
               setCurrentMessage(getSessionStartMessage());
             }
           }
+        }
+      } else if (nextAppState.match(/inactive|background/)) {
+        try {
+          await saveTimerState(currentTimerState);
+          timerStateRef.current = currentTimerState;
+        } catch (error) {
+          console.error("Failed to persist timer state on background:", error);
         }
       }
     };
@@ -280,6 +366,8 @@ export const useTimer = ({
           currentDuration
         );
         setTimerSeconds(currentDuration);
+        latestTimerSecondsRef.current = currentDuration;
+        completionTriggeredRef.current = false;
 
         // Also update the timer state ref to maintain consistency
         if (timerStateRef.current) {
@@ -300,6 +388,21 @@ export const useTimer = ({
       const saveTimerOnUnmount = async () => {
         if (timerStateRef.current) {
           // Update with latest UI state
+          const activeDuration = isRest ? breakDuration : focusDuration;
+          const shouldTrackStart = isRunning && timerSeconds > 0;
+          const startTime = shouldTrackStart
+            ? startTimestampRef.current ??
+              Date.now() - (activeDuration - timerSeconds) * 1000
+            : null;
+
+          if (shouldTrackStart && startTime !== null) {
+            startTimestampRef.current = startTime;
+          }
+
+          if (!shouldTrackStart) {
+            startTimestampRef.current = null;
+          }
+
           const finalState: TimerState = {
             ...timerStateRef.current,
             isRunning,
@@ -307,10 +410,7 @@ export const useTimer = ({
             timerSeconds,
             focusDuration,
             breakDuration,
-            startTime: isRunning
-              ? Date.now() -
-                ((isRest ? breakDuration : focusDuration) - timerSeconds) * 1000
-              : null,
+            startTime,
             notificationId,
             lastActiveTime: Date.now(),
           };
@@ -335,50 +435,76 @@ export const useTimer = ({
 
   // Consolidated timer countdown effect with timestamp-based updates
   useEffect(() => {
-    let isMounted = true;
-    let startTime: number | null = null;
-    let initialSeconds: number | null = null;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
 
-    const updateTimer = () => {
-      if (!isMounted || !startTime || !initialSeconds) return;
+    if (!isRunning) {
+      return;
+    }
 
-      // Don't update if duration is being changed
-      if (isDurationUpdatingRef.current) return;
+    const activeDuration = isRest ? breakDuration : focusDuration;
 
-      const now = Date.now();
-      const elapsedSeconds = Math.floor((now - startTime) / 1000);
-      const newSeconds = Math.max(0, initialSeconds - elapsedSeconds);
+    if (!startTimestampRef.current) {
+      const baselineSeconds = latestTimerSecondsRef.current;
+      startTimestampRef.current =
+        Date.now() - Math.max(0, activeDuration - baselineSeconds) * 1000;
+    }
 
-      // Verify expected value if set
+    const tick = () => {
+      if (!startTimestampRef.current) {
+        return;
+      }
+
+      if (isDurationUpdatingRef.current) {
+        return;
+      }
+
+      const elapsedSeconds = Math.floor(
+        (Date.now() - startTimestampRef.current) / 1000
+      );
+      const nextSeconds = Math.max(0, activeDuration - elapsedSeconds);
+
       if (
         expectedTimerSecondsRef.current !== null &&
-        newSeconds !== expectedTimerSecondsRef.current
+        nextSeconds !== expectedTimerSecondsRef.current
       ) {
         return;
       }
 
-      setTimerSeconds(newSeconds);
+      latestTimerSecondsRef.current = nextSeconds;
+      setTimerSeconds(nextSeconds);
 
-      if (newSeconds === 0) {
+      if (timerStateRef.current) {
+        timerStateRef.current = {
+          ...timerStateRef.current,
+          timerSeconds: nextSeconds,
+        };
+      }
+
+      if (nextSeconds === 0) {
+        if (!completionTriggeredRef.current) {
+          completionTriggeredRef.current = true;
+          void handleTimerCompletion(isRest);
+        }
+        startTimestampRef.current = null;
         setIsRunning(false);
+      } else {
+        completionTriggeredRef.current = false;
       }
     };
 
-    if (isRunning && timerSeconds > 0) {
-      startTime = Date.now();
-      initialSeconds = timerSeconds;
-      const intervalId = setInterval(updateTimer, 1000);
-
-      return () => {
-        isMounted = false;
-        clearInterval(intervalId);
-      };
-    }
+    tick();
+    intervalRef.current = setInterval(tick, 1000);
 
     return () => {
-      isMounted = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [isRunning, timerSeconds]);
+  }, [isRunning, isRest, focusDuration, breakDuration, handleTimerCompletion]);
 
   // Update message based on current timer state
   const updateMessageBasedOnState = (running: boolean, rest: boolean) => {
@@ -397,45 +523,155 @@ export const useTimer = ({
     }
   };
 
+  const handleTimerCompletion = useCallback(
+    async (restModeCompleted: boolean) => {
+      completionTriggeredRef.current = true;
+
+      try {
+        await cancelAllScheduledNotifications();
+      } catch (error) {
+        console.error("Error cancelling scheduled notifications:", error);
+      }
+
+      setNotificationId(null);
+      startTimestampRef.current = null;
+
+      try {
+        await sendTimerCompleteNotification(restModeCompleted);
+      } catch (error) {
+        console.error("Error sending completion notification:", error);
+      }
+
+      if (appStateRef.current === "active") {
+        try {
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success
+          );
+        } catch (error) {
+          console.error("Error triggering haptics:", error);
+        }
+      }
+
+      setTaskCompleted(true);
+      latestTimerSecondsRef.current = 0;
+      setTimerSeconds(0);
+
+      if (restModeCompleted) {
+        setCurrentMessage(getResumeMessage());
+      } else {
+        setCurrentMessage(getBreakMessage());
+      }
+
+      try {
+        await synchronizeTimerState({
+          isRunning: false,
+          timerSeconds: 0,
+          notificationId: null,
+          startTime: null,
+        });
+      } catch (error) {
+        console.error("Error synchronizing completion state:", error);
+      }
+    },
+    [getBreakMessage, getResumeMessage, synchronizeTimerState]
+  );
+
   // Safe function to update timer durations without causing flickering or freezing
   const updateTimerDuration = useCallback(
     async (isRestMode: boolean, newDuration: number) => {
-      // Set updating flag and store expected value
+      const sanitizedDuration = Math.max(60, Math.round(newDuration));
       isDurationUpdatingRef.current = true;
-      expectedTimerSecondsRef.current = newDuration;
 
-      // Temporarily pause timer if running
-      const wasRunning = isRunning;
-      if (wasRunning) {
-        setIsRunning(false);
-        // Small delay to ensure the interval is cleared
-        await new Promise((resolve) => setTimeout(resolve, 50));
+      const previousDuration = isRestMode ? breakDuration : focusDuration;
+      const isEditingCurrentMode = isRestMode === isRest;
+      const elapsedSeconds = isEditingCurrentMode
+        ? Math.max(0, previousDuration - timerSeconds)
+        : 0;
+      const nextRemainingSeconds = isEditingCurrentMode
+        ? Math.max(0, sanitizedDuration - elapsedSeconds)
+        : timerSeconds;
+
+      if (isRestMode) {
+        setBreakDuration(sanitizedDuration);
+      } else {
+        setFocusDuration(sanitizedDuration);
+        setSelectedPreset(sanitizedDuration);
       }
 
-      // Update the timer seconds
-      setTimerSeconds(newDuration);
+      let updatedStartTime: number | null = null;
 
-      // Small delay to ensure state updates are processed
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (isEditingCurrentMode) {
+        latestTimerSecondsRef.current = nextRemainingSeconds;
+        setTimerSeconds(nextRemainingSeconds);
+        completionTriggeredRef.current = false;
 
-      // Resume timer if it was running
-      if (wasRunning) {
-        setIsRunning(true);
+        if (isRunning) {
+          updatedStartTime =
+            Date.now() - Math.min(elapsedSeconds, sanitizedDuration) * 1000;
+          startTimestampRef.current = updatedStartTime;
+        } else {
+          startTimestampRef.current = null;
+        }
+
+        if (nextRemainingSeconds === 0) {
+          setIsRunning(false);
+        }
       }
 
-      // Clear stabilization flags after a small delay
-      setTimeout(() => {
-        isDurationUpdatingRef.current = false;
+      const overrides: Partial<TimerState> = {};
+      if (isRestMode) {
+        overrides.breakDuration = sanitizedDuration;
+      } else {
+        overrides.focusDuration = sanitizedDuration;
+      }
+
+      if (isEditingCurrentMode) {
+        overrides.timerSeconds = latestTimerSecondsRef.current;
+        overrides.startTime = updatedStartTime;
+      }
+
+      if (isEditingCurrentMode) {
+        expectedTimerSecondsRef.current = latestTimerSecondsRef.current;
+      } else {
         expectedTimerSecondsRef.current = null;
-      }, 100);
+      }
+
+      try {
+        await synchronizeTimerState(overrides);
+      } finally {
+        setTimeout(() => {
+          isDurationUpdatingRef.current = false;
+          expectedTimerSecondsRef.current = null;
+        }, 150);
+      }
+
+      completionTriggeredRef.current = false;
     },
-    [isRunning]
+    [
+      breakDuration,
+      focusDuration,
+      isRest,
+      isRunning,
+      synchronizeTimerState,
+      timerSeconds,
+    ]
   );
 
   const startTimer = async () => {
     const newRunningState = !isRunning;
+    if (newRunningState) {
+      completionTriggeredRef.current = false;
+    }
 
     try {
+      const activeDuration = isRest ? breakDuration : focusDuration;
+      const baselineSeconds = latestTimerSecondsRef.current;
+      const startTimestamp =
+        newRunningState && baselineSeconds > 0
+          ? startTimestampRef.current ??
+            Date.now() - (activeDuration - baselineSeconds) * 1000
+          : null;
+
       // Log which mode/duration will be used on start
       console.log(
         `[Timer] ${newRunningState ? "Starting" : "Pausing"} ${
@@ -447,7 +683,11 @@ export const useTimer = ({
       setIsRunning(newRunningState);
 
       // Synchronize state to ensure consistency
-      const currentTimerState = await synchronizeTimerState();
+      const currentTimerState = await synchronizeTimerState({
+        isRunning: newRunningState,
+        startTime: startTimestamp,
+        timerSeconds: baselineSeconds,
+      });
 
       if (newRunningState) {
         // Starting the timer
@@ -464,6 +704,7 @@ export const useTimer = ({
           isRunning: true,
         });
         timerStateRef.current = updatedState;
+        startTimestampRef.current = updatedState.startTime;
         setNotificationId(updatedState.notificationId);
       } else {
         // Use timer service to pause timer
@@ -472,6 +713,7 @@ export const useTimer = ({
           isRunning: false,
         });
         timerStateRef.current = updatedState;
+        startTimestampRef.current = null;
 
         if (notificationsPermission) {
           await cancelAllScheduledNotifications();
@@ -489,6 +731,9 @@ export const useTimer = ({
 
   const pauseTimer = async () => {
     setIsRunning(false);
+    startTimestampRef.current = null;
+    latestTimerSecondsRef.current = timerSeconds;
+    completionTriggeredRef.current = false;
 
     try {
       if (!timerStateRef.current) {
@@ -509,6 +754,9 @@ export const useTimer = ({
 
       const updatedState = await pauseTimerService(currentTimerState);
       timerStateRef.current = updatedState;
+      startTimestampRef.current = updatedState.startTime;
+      setTimerSeconds(updatedState.timerSeconds);
+      latestTimerSecondsRef.current = updatedState.timerSeconds;
 
       if (notificationsPermission) {
         await cancelAllScheduledNotifications();
@@ -553,10 +801,12 @@ export const useTimer = ({
       // Toggle between focus and rest mode
       const newIsRest = !isRest;
       setIsRest(newIsRest);
+      startTimestampRef.current = null;
 
       // Set the appropriate timer based on the new mode
       const newDuration = newIsRest ? breakDuration : focusDuration;
       setTimerSeconds(newDuration);
+      latestTimerSecondsRef.current = newDuration;
       setSelectedPreset(newDuration); // Keep selectedPreset updated for UI consistency
 
       // Update the message based on the new mode
@@ -584,6 +834,7 @@ export const useTimer = ({
         lastActiveTime: Date.now(),
       });
       timerStateRef.current = updatedState;
+      startTimestampRef.current = updatedState.startTime;
 
       // If the timer was running before, restart it after a short delay
       // to ensure all state updates have been processed

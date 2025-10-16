@@ -1,3 +1,4 @@
+import TimerPresets from "@/components/timer/TimerPresets";
 import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
@@ -17,9 +18,10 @@ import SpeechBubble from "../../components/SpeechBubble";
 import Controls from "../../components/timer/Controls";
 import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
-import { NadaTheme } from "../../constants/NadaTheme";
 import { useSession } from "../../hooks/useSession";
+import { useTheme } from "../../hooks/useTheme";
 import { useTimer } from "../../hooks/useTimer";
+import type { NadaThemeType } from "../../types/nada";
 
 // Define props interface for the content component
 interface NadaHomeContentProps {
@@ -68,10 +70,12 @@ const NadaHomeContent = ({
     currentMessage,
     startTimer,
     toggleTimerMode,
-    // updateTimerDuration,
+    updateTimerDuration,
   } = useTimer();
 
   const { currentSession, sessionGoal, streak } = useSession();
+  const { theme, colors, isDark } = useTheme();
+  const themedStyles = useMemo(() => createStyles(theme), [theme]);
 
   // Animation for button presses
   const animateButtonPress = () => {
@@ -133,46 +137,49 @@ const NadaHomeContent = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={themedStyles.container}>
       <StatusBar
-        barStyle="light-content"
-        backgroundColor={NadaTheme.colors.background}
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
         translucent={false}
       />
 
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
+      <View style={themedStyles.header}>
+        <View style={themedStyles.headerLeft}>
           <NadaLogo size="medium" />
         </View>
-        <View style={styles.headerRight}>
+        <View style={themedStyles.headerRight}>
           {isSignedIn ? (
-            <View style={styles.authButtonsContainer}>
+            <View style={themedStyles.authButtonsContainer}>
               <TouchableOpacity
-                style={styles.authButton}
+                style={themedStyles.authButton}
                 onPress={() =>
                   console.log("Profile functionality not implemented")
                 }
               >
-                <Text style={styles.authButtonText}>Profile</Text>
+                <Text style={themedStyles.authButtonText}>Profile</Text>
               </TouchableOpacity>
-              <View style={styles.signOutButtonContainer}>
+              <View style={themedStyles.signOutButtonContainer}>
                 <SignOutButton />
               </View>
             </View>
           ) : (
-            <View style={styles.authButtonsContainer}>
+            <View style={themedStyles.authButtonsContainer}>
               <TouchableOpacity
-                style={styles.authButton}
+                style={themedStyles.authButton}
                 onPress={() => handleAuthPress("sign-in")}
               >
-                <Text style={styles.authButtonText}>Sign In</Text>
+                <Text style={themedStyles.authButtonText}>Sign In</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.authButton, styles.authButtonSecondary]}
+                style={[
+                  themedStyles.authButton,
+                  themedStyles.authButtonSecondary,
+                ]}
                 onPress={() => handleAuthPress("sign-up")}
               >
-                <Text style={styles.authButtonText}>Sign Up</Text>
+                <Text style={themedStyles.authButtonText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -180,16 +187,16 @@ const NadaHomeContent = ({
       </View>
 
       {/* Status Bar - Shows streak and auth status */}
-      <View style={styles.statusBarContainer}>
-        <View style={styles.streakCounter}>
-          <Text style={styles.streakText}>{streak} day streak</Text>
+      <View style={themedStyles.statusBarContainer}>
+        <View style={themedStyles.streakCounter}>
+          <Text style={themedStyles.streakText}>{streak} day streak</Text>
         </View>
       </View>
 
       {/* Main Content - Now Scrollable */}
       <ScrollView
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.mainContent}
+        style={themedStyles.scrollContainer}
+        contentContainerStyle={themedStyles.mainContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
@@ -229,12 +236,12 @@ const NadaHomeContent = ({
           taskCompleted={taskCompleted}
         />
 
-        {/* <TimerPresets
+        <TimerPresets
           focusDuration={focusDuration}
           breakDuration={breakDuration}
           isRest={isRest}
           updateTimerDuration={updateTimerDuration}
-        /> */}
+        />
 
         <SessionInfo
           currentSession={currentSession}
@@ -251,10 +258,10 @@ const NadaHomeContent = ({
         />
 
         <TouchableOpacity
-          style={styles.motivateBtn}
+          style={themedStyles.motivateBtn}
           onPress={handleMotivatePress}
         >
-          <Text style={styles.motivateText}>
+          <Text style={themedStyles.motivateText}>
             {isSignedIn
               ? "Actually motivate me 🙄"
               : "Sign in for more features 🙄"}
@@ -262,25 +269,25 @@ const NadaHomeContent = ({
         </TouchableOpacity>
 
         {!isSignedIn && (
-          <View style={styles.authPromptContainer}>
-            <Text style={styles.authPromptText}>
+          <View style={themedStyles.authPromptContainer}>
+            <Text style={themedStyles.authPromptText}>
               Sign in to track your productivity progress.
             </Text>
-            <View style={styles.authPromptButtonsContainer}>
+            <View style={themedStyles.authPromptButtonsContainer}>
               <TouchableOpacity
-                style={styles.authPromptButton}
+                style={themedStyles.authPromptButton}
                 onPress={() => handleAuthPress("sign-in")}
               >
-                <Text style={styles.authPromptButtonText}>Sign In</Text>
+                <Text style={themedStyles.authPromptButtonText}>Sign In</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  styles.authPromptButton,
-                  styles.authPromptButtonSecondary,
+                  themedStyles.authPromptButton,
+                  themedStyles.authPromptButtonSecondary,
                 ]}
                 onPress={() => handleAuthPress("sign-up")}
               >
-                <Text style={styles.authPromptButtonText}>Sign Up</Text>
+                <Text style={themedStyles.authPromptButtonText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -290,161 +297,162 @@ const NadaHomeContent = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NadaTheme.colors.background,
-    width: "100%",
-    height: "100%",
-    position: "relative",
-  },
+const createStyles = (theme: NadaThemeType) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      width: "100%",
+      height: "100%",
+      position: "relative",
+    },
 
-  scrollContainer: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: NadaTheme.colors.background,
-  },
+    scrollContainer: {
+      flex: 1,
+      width: "100%",
+      backgroundColor: theme.colors.background,
+    },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    paddingTop: 10,
-    paddingBottom: 10,
-  },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 15,
+      paddingTop: 10,
+      paddingBottom: 10,
+    },
 
-  headerLeft: {
-    paddingHorizontal: 15,
-  },
+    headerLeft: {
+      paddingHorizontal: 15,
+    },
 
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
 
-  authButtonsContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
+    authButtonsContainer: {
+      flexDirection: "row",
+      gap: 8,
+    },
 
-  authButton: {
-    backgroundColor: NadaTheme.colors.overlay,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: NadaTheme.colors.overlayBorder,
-  },
+    authButton: {
+      backgroundColor: theme.colors.overlay,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+    },
 
-  authButtonSecondary: {
-    backgroundColor: NadaTheme.colors.highlight,
-    borderColor: NadaTheme.colors.highlightBorder,
-  },
+    authButtonSecondary: {
+      backgroundColor: theme.colors.highlight,
+      borderColor: theme.colors.highlightBorder,
+    },
 
-  authButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: NadaTheme.colors.text,
-  },
+    authButtonText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
 
-  signOutButtonContainer: {},
+    signOutButtonContainer: {},
 
-  streakCounter: {
-    backgroundColor: "rgba(255, 107, 107, 0.15)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 107, 107, 0.3)",
-  },
+    streakCounter: {
+      backgroundColor: theme.colors.highlight,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.highlightBorder,
+    },
 
-  streakText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#ff6b6b",
-  },
+    streakText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.primary,
+    },
 
-  statusBarContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 10,
-    gap: 15,
-  },
+    statusBarContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginVertical: 10,
+      gap: 15,
+    },
 
-  mainContent: {
-    paddingHorizontal: 20,
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: 15,
-    paddingBottom: 30,
-    minHeight: "100%",
-    backgroundColor: NadaTheme.colors.background,
-  },
+    mainContent: {
+      paddingHorizontal: 20,
+      alignItems: "center",
+      justifyContent: "flex-start",
+      paddingTop: 15,
+      paddingBottom: 30,
+      minHeight: "100%",
+      backgroundColor: theme.colors.background,
+    },
 
-  motivateBtn: {
-    width: 280,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    motivateBtn: {
+      width: 280,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderRadius: 30,
+      backgroundColor: theme.colors.overlay,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+      justifyContent: "center",
+      alignItems: "center",
+    },
 
-  motivateText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
-  },
+    motivateText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
 
-  authPromptContainer: {
-    width: "100%",
-    marginTop: 25,
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    alignItems: "center",
-  },
+    authPromptContainer: {
+      width: "100%",
+      marginTop: 25,
+      paddingVertical: 20,
+      paddingHorizontal: 15,
+      borderRadius: 20,
+      backgroundColor: theme.colors.overlay,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+      alignItems: "center",
+    },
 
-  authPromptText: {
-    fontSize: 16,
-    color: NadaTheme.colors.text,
-    marginBottom: 15,
-    textAlign: "center",
-  },
+    authPromptText: {
+      fontSize: 16,
+      color: theme.colors.text,
+      marginBottom: 15,
+      textAlign: "center",
+    },
 
-  authPromptButtonsContainer: {
-    flexDirection: "row",
-    gap: 15,
-  },
+    authPromptButtonsContainer: {
+      flexDirection: "row",
+      gap: 15,
+    },
 
-  authPromptButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    backgroundColor: NadaTheme.colors.overlay,
-    borderWidth: 1,
-    borderColor: NadaTheme.colors.overlayBorder,
-  },
+    authPromptButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 25,
+      backgroundColor: theme.colors.overlay,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+    },
 
-  authPromptButtonSecondary: {
-    backgroundColor: NadaTheme.colors.primary,
-    borderColor: "transparent",
-  },
+    authPromptButtonSecondary: {
+      backgroundColor: theme.colors.primary,
+      borderColor: "transparent",
+    },
 
-  authPromptButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: NadaTheme.colors.text,
-  },
-});
+    authPromptButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+  });
 
 export default NadaHomeScreen;

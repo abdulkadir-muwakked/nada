@@ -11,29 +11,13 @@ export const BACKGROUND_TIMER_TASK = "BACKGROUND_TIMER_TASK";
 export const FOCUS_SESSION_END_NOTIFICATION = "FOCUS_SESSION_END_NOTIFICATION";
 export const BREAK_SESSION_END_NOTIFICATION = "BREAK_SESSION_END_NOTIFICATION";
 
-// Notification messages from Nada
-export const getFocusEndMessages = () => [
-  "You actually finished your focus time. I'm genuinely shocked.",
-  "Focus time over. You probably just scrolled through TikTok the whole time.",
-  "Focus session ended. You actually did it. Proud of you... kind of.",
-  "One focus session down, infinity more to go before you're productive.",
-  "Focus time complete. Did you actually focus or just daydream?",
-  "Focus time ended. Let's be real, how many times did you check your phone?",
-];
+const focusCompletionMessage = "Focus session complete. Time for a break!";
+const breakCompletionMessage = "Break over. Back to work!";
 
-export const getBreakEndMessages = () => [
-  "Break's over. Let's go disappoint your to-do list again.",
-  "Back to work. Try to actually focus this time.",
-  "Break time's up. I bet you're thrilled to get back to pretending to work.",
-  "Your very generous break is over. Time to stare blankly at your screen again.",
-  "Break's over. Don't worry, another distraction will come along soon.",
-  "Back to focus mode. Try to last longer than 30 seconds this time.",
-];
-
-// Random message selector
-const getRandomMessage = (messageArray: string[]) => {
-  return messageArray[Math.floor(Math.random() * messageArray.length)];
-};
+export const getCompletionNotificationContent = (isRest: boolean) => ({
+  title: "Nada Timer",
+  body: isRest ? breakCompletionMessage : focusCompletionMessage,
+});
 
 // Configure notification settings
 export const configureNotifications = async () => {
@@ -125,18 +109,14 @@ try {
           );
           return BackgroundFetch.BackgroundFetchResult.NewData;
         } else {
-          const messages = state.isRest
-            ? getBreakEndMessages()
-            : getFocusEndMessages();
-          const message = getRandomMessage(messages);
-          const title = state.isRest
-            ? "😐 Break time's up"
-            : "😐 Focus session complete";
+          const { title, body } = getCompletionNotificationContent(
+            state.isRest
+          );
 
           const identifier = await Notifications.scheduleNotificationAsync({
             content: {
               title,
-              body: message,
+              body,
               sound: "default",
               priority: Notifications.AndroidNotificationPriority.HIGH,
               data: { isRest: state.isRest },
@@ -303,14 +283,12 @@ export const scheduleTimerNotification = async (
     const triggerDate = new Date(Date.now() + durationInSeconds * 1000);
 
     // Create appropriate message based on session type
-    const messages = isRest ? getBreakEndMessages() : getFocusEndMessages();
-    const message = getRandomMessage(messages);
-    const title = isRest ? "😐 Break time's up" : "😐 Focus session complete";
+    const { title, body } = getCompletionNotificationContent(isRest);
 
     // Store notification data
     const notificationData = {
       title,
-      body: message,
+      body,
       isRest,
       endTime: triggerDate.getTime(),
     };
@@ -359,14 +337,12 @@ export const scheduleTimerNotification = async (
 
 // Send immediate notification when timer completes
 export const sendTimerCompleteNotification = async (isRest: boolean) => {
-  const messages = isRest ? getBreakEndMessages() : getFocusEndMessages();
-  const message = getRandomMessage(messages);
-  const title = isRest ? "😐 Break time's up" : "😐 Focus session complete";
+  const { title, body } = getCompletionNotificationContent(isRest);
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
-      body: message,
+      body,
       sound: "default",
       priority: Notifications.AndroidNotificationPriority.HIGH,
       data: { isRest },

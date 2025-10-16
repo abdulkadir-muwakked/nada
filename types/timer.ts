@@ -32,7 +32,7 @@ export interface UseTimerReturn {
   startTimer: () => Promise<void>;
   pauseTimer: () => Promise<void>;
   toggleTimerMode: () => Promise<void>;
-  updateTimerDuration: (isRestMode: boolean, newDuration: number) => void;
+  updateTimerDuration: (isRestMode: boolean, newDuration: number) => Promise<void>;
   formatTime: (seconds: number) => string;
 }
 
