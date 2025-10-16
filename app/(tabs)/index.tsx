@@ -17,7 +17,6 @@ import SpeechBubble from "../../components/SpeechBubble";
 import Controls from "../../components/timer/Controls";
 import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
-import TimerPresets from "../../components/timer/TimerPresets";
 import { NadaTheme } from "../../constants/NadaTheme";
 import { useSession } from "../../hooks/useSession";
 import { useTimer } from "../../hooks/useTimer";
@@ -69,7 +68,7 @@ const NadaHomeContent = ({
     currentMessage,
     startTimer,
     toggleTimerMode,
-    updateTimerDuration,
+    // updateTimerDuration,
   } = useTimer();
 
   const { currentSession, sessionGoal, streak } = useSession();
@@ -230,12 +229,12 @@ const NadaHomeContent = ({
           taskCompleted={taskCompleted}
         />
 
-        <TimerPresets
+        {/* <TimerPresets
           focusDuration={focusDuration}
           breakDuration={breakDuration}
           isRest={isRest}
           updateTimerDuration={updateTimerDuration}
-        />
+        /> */}
 
         <SessionInfo
           currentSession={currentSession}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import {
   getBreakMessage,
@@ -14,7 +14,6 @@ import {
   cancelAllScheduledNotifications,
   requestNotificationPermissions,
   scheduleTimerNotification,
-  sendTimerCompleteNotification,
 } from "../utils/notificationService";
 import { formatTime } from "../utils/timer/timerUtils";
 import {
@@ -23,7 +22,6 @@ import {
   initializeTimerState,
   loadTimerState,
   pauseTimer as pauseTimerService,
-  resetTimer as resetTimerService,
   saveTimerState,
   startTimer as startTimerService,
   switchTimerMode as switchTimerModeService,
@@ -35,6 +33,10 @@ export const useTimer = ({
 }: UseTimerProps = {}): UseTimerReturn => {
   // Reference to app state
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // Refs for timer stabilization
+  const isDurationUpdatingRef = useRef<boolean>(false);
+  const expectedTimerSecondsRef = useRef<number | null>(null);
 
   // Timer state
   const [focusDuration, setFocusDuration] =
@@ -331,156 +333,52 @@ export const useTimer = ({
     notificationId,
   ]);
 
-  // Consolidated timer countdown effect with robust interval management
+  // Consolidated timer countdown effect with timestamp-based updates
   useEffect(() => {
-    // Track the last tick time to handle potential delays
-    let lastTickTime = Date.now();
+    let isMounted = true;
+    let startTime: number | null = null;
+    let initialSeconds: number | null = null;
 
-    // Clean up any existing interval to prevent duplicates
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    const updateTimer = () => {
+      if (!isMounted || !startTime || !initialSeconds) return;
 
-    // Only start a new interval if the timer is running and has time remaining
-    if (isRunning && timerSeconds > 0) {
-      console.log(
-        `Starting timer interval with ${timerSeconds} seconds remaining`
-      );
+      // Don't update if duration is being changed
+      if (isDurationUpdatingRef.current) return;
 
-      // Use setInterval with compensation for drift
-      intervalRef.current = setInterval(() => {
-        // Calculate elapsed time since last tick
-        const now = Date.now();
-        const elapsedMs = now - lastTickTime;
-        lastTickTime = now;
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - startTime) / 1000);
+      const newSeconds = Math.max(0, initialSeconds - elapsedSeconds);
 
-        // Calculate how many seconds should have passed (accounting for delays)
-        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+      // Verify expected value if set
+      if (
+        expectedTimerSecondsRef.current !== null &&
+        newSeconds !== expectedTimerSecondsRef.current
+      ) {
+        return;
+      }
 
-        // Update timer with a functional state update to avoid stale closures
-        setTimerSeconds((prev: number) => {
-          // Ensure we don't go below zero
-          const newValue = Math.max(0, prev - Math.max(1, elapsedSeconds));
-          return newValue;
-        });
-      }, 1000);
-    }
+      setTimerSeconds(newSeconds);
 
-    // Handle timer completion
-    if (timerSeconds === 0 && isRunning) {
-      // Timer has reached zero while running
-      const handleTimerCompletion = async () => {
-        try {
-          // Cancel any scheduled notifications first
-          await cancelAllScheduledNotifications();
-          setNotificationId(null);
-
-          if (!isRest) {
-            // Focus timer completed, switch to rest mode
-            console.log("Focus session completed, switching to break mode");
-
-            // Send notification if app is in foreground (background notifications are handled separately)
-            if (appStateRef.current === "active" && notificationsPermission) {
-              await sendTimerCompleteNotification(false); // Focus completed
-            }
-
-            // Switch to rest mode
-            setIsRest(true);
-            setTimerSeconds(breakDuration);
-            setCurrentMessage(getBreakMessage());
-
-            // Update the timer state
-            if (timerStateRef.current) {
-              const updatedState = await switchTimerModeService(
-                timerStateRef.current
-              );
-              timerStateRef.current = updatedState;
-            }
-          } else {
-            // Break timer completed
-            console.log("Break session completed");
-
-            // Send notification if app is in foreground
-            if (appStateRef.current === "active" && notificationsPermission) {
-              await sendTimerCompleteNotification(true); // Break completed
-            }
-
-            // Stop the timer
-            setIsRunning(false);
-
-            // Reset timer state
-            if (timerStateRef.current) {
-              const updatedState = await resetTimerService(
-                timerStateRef.current
-              );
-              timerStateRef.current = updatedState;
-            }
-
-            // Show task completed animation
-            setTaskCompleted(true);
-            setCurrentMessage(
-              "Wow, you actually finished something. I'm shocked."
-            );
-
-            // Reset task completed status after 3 seconds
-            setTimeout(() => {
-              setTaskCompleted(false);
-              setCurrentMessage(getSessionStartMessage());
-            }, 3000);
-          }
-        } catch (error) {
-          console.error("Error handling timer completion:", error);
-        }
-      };
-
-      handleTimerCompletion();
-    }
-
-    // Save current timer state to maintain consistency
-    const saveCurrentState = async () => {
-      if (timerStateRef.current) {
-        // Update the timer state with current UI state
-        const currentState: TimerState = {
-          ...timerStateRef.current,
-          isRunning,
-          isRest,
-          timerSeconds,
-          focusDuration,
-          breakDuration,
-          startTime: isRunning
-            ? Date.now() -
-              ((isRest ? breakDuration : focusDuration) - timerSeconds) * 1000
-            : null,
-          notificationId,
-          lastActiveTime: Date.now(),
-        };
-
-        await saveTimerState(currentState);
-        timerStateRef.current = currentState;
+      if (newSeconds === 0) {
+        setIsRunning(false);
       }
     };
 
-    // Debounce saving state to avoid excessive writes
-    const timeoutId = setTimeout(saveCurrentState, 1000);
+    if (isRunning && timerSeconds > 0) {
+      startTime = Date.now();
+      initialSeconds = timerSeconds;
+      const intervalId = setInterval(updateTimer, 1000);
+
+      return () => {
+        isMounted = false;
+        clearInterval(intervalId);
+      };
+    }
 
     return () => {
-      // Clean up interval and timeout on unmount or when dependencies change
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      clearTimeout(timeoutId);
+      isMounted = false;
     };
-  }, [
-    isRunning,
-    timerSeconds,
-    isRest,
-    breakDuration,
-    focusDuration,
-    notificationsPermission,
-    notificationId,
-  ]);
+  }, [isRunning, timerSeconds]);
 
   // Update message based on current timer state
   const updateMessageBasedOnState = (running: boolean, rest: boolean) => {
@@ -500,100 +398,39 @@ export const useTimer = ({
   };
 
   // Safe function to update timer durations without causing flickering or freezing
-  const updateTimerDuration = (isRestMode: boolean, newDuration: number) => {
-    // Store the timer state before changes
-    const wasRunning = isRunning;
-    const currentMode = isRest;
-    const currentSeconds = timerSeconds;
-    const currentDuration = isRest ? breakDuration : focusDuration;
+  const updateTimerDuration = useCallback(
+    async (isRestMode: boolean, newDuration: number) => {
+      // Set updating flag and store expected value
+      isDurationUpdatingRef.current = true;
+      expectedTimerSecondsRef.current = newDuration;
 
-    console.log(
-      `Updating ${isRestMode ? "break" : "focus"} duration from ${
-        isRestMode ? breakDuration : focusDuration
-      } to ${newDuration}`
-    );
-
-    // First, clear any existing interval to prevent race conditions
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    // Pause timer while making changes
-    if (wasRunning) {
-      setIsRunning(false);
-    }
-
-    // Calculate how much of the current timer has elapsed (as a percentage)
-    let percentageComplete = 0;
-    if (currentSeconds > 0 && currentDuration > 0) {
-      percentageComplete = (currentDuration - currentSeconds) / currentDuration;
-    }
-
-    // Update the appropriate duration state and timer seconds based on the current mode
-    if (isRestMode) {
-      setBreakDuration(newDuration);
-
-      // If we're in rest mode, we need to update the timer
-      if (currentMode === true) {
-        // Apply the same percentage of completion to the new duration
-        const newSeconds = wasRunning
-          ? Math.max(1, Math.round(newDuration * (1 - percentageComplete)))
-          : newDuration;
-
-        console.log(
-          `Adjusting rest timer: ${currentSeconds}s → ${newSeconds}s (${Math.round(
-            percentageComplete * 100
-          )}% complete)`
-        );
-        setTimerSeconds(newSeconds);
-        setSelectedPreset(newDuration);
+      // Temporarily pause timer if running
+      const wasRunning = isRunning;
+      if (wasRunning) {
+        setIsRunning(false);
+        // Small delay to ensure the interval is cleared
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
-    } else {
-      setFocusDuration(newDuration);
 
-      // If we're in focus mode, we need to update the timer
-      if (currentMode === false) {
-        // Apply the same percentage of completion to the new duration
-        const newSeconds = wasRunning
-          ? Math.max(1, Math.round(newDuration * (1 - percentageComplete)))
-          : newDuration;
+      // Update the timer seconds
+      setTimerSeconds(newDuration);
 
-        console.log(
-          `Adjusting focus timer: ${currentSeconds}s → ${newSeconds}s (${Math.round(
-            percentageComplete * 100
-          )}% complete)`
-        );
-        setTimerSeconds(newSeconds);
-        setSelectedPreset(newDuration);
-      }
-    }
+      // Small delay to ensure state updates are processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Update timer state ref to avoid inconsistency
-    if (timerStateRef.current) {
-      timerStateRef.current = {
-        ...timerStateRef.current,
-        focusDuration: isRestMode ? focusDuration : newDuration,
-        breakDuration: isRestMode ? newDuration : breakDuration,
-        timerSeconds:
-          currentMode === isRestMode
-            ? wasRunning
-              ? Math.max(1, Math.round(newDuration * (1 - percentageComplete)))
-              : newDuration
-            : timerSeconds,
-        isRunning: false, // Will be set to true below if needed
-        lastActiveTime: Date.now(),
-      };
-    }
-
-    // If the timer was running, restart it after allowing state to update
-    if (wasRunning) {
-      // Use requestAnimationFrame to ensure DOM updates first
-      requestAnimationFrame(() => {
+      // Resume timer if it was running
+      if (wasRunning) {
         setIsRunning(true);
-      });
-    }
-  };
+      }
+
+      // Clear stabilization flags after a small delay
+      setTimeout(() => {
+        isDurationUpdatingRef.current = false;
+        expectedTimerSecondsRef.current = null;
+      }, 100);
+    },
+    [isRunning]
+  );
 
   const startTimer = async () => {
     const newRunningState = !isRunning;
