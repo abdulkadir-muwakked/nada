@@ -5,6 +5,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
+import { defaultTimerSettings } from "../context/TimerSettingsContext";
 
 // Constants for task names
 export const BACKGROUND_TIMER_TASK = "BACKGROUND_TIMER_TASK";
@@ -13,6 +14,15 @@ export const BREAK_SESSION_END_NOTIFICATION = "BREAK_SESSION_END_NOTIFICATION";
 
 const focusCompletionMessage = "Focus session complete. Time for a break!";
 const breakCompletionMessage = "Break over. Back to work!";
+
+const DEFAULT_FOCUS_DURATION_SECONDS =
+  defaultTimerSettings.focusDurationMinutes * 60;
+const DEFAULT_SHORT_BREAK_SECONDS =
+  defaultTimerSettings.shortBreakMinutes * 60;
+const DEFAULT_LONG_BREAK_SECONDS =
+  defaultTimerSettings.longBreakMinutes * 60;
+const DEFAULT_FOCUS_SESSIONS_PER_CYCLE =
+  defaultTimerSettings.focusSessionsPerCycle;
 
 export const getCompletionNotificationContent = (isRest: boolean) => ({
   title: "Nada Timer",
@@ -78,6 +88,10 @@ try {
           startTime: number | null;
           notificationId: string | null;
           lastActiveTime: number;
+          shortBreakDuration?: number;
+          longBreakDuration?: number;
+          focusSessionsPerCycle?: number;
+          completedFocusSessions?: number;
         };
 
         if (!state.isRunning || !state.startTime) {
@@ -91,14 +105,52 @@ try {
 
         if (remaining <= 0) {
           await sendTimerCompleteNotification(state.isRest);
-          const nextDuration = state.isRest
-            ? state.focusDuration
-            : state.breakDuration;
+
+          const focusSessionsPerCycle = Math.max(
+            1,
+            state.focusSessionsPerCycle ?? DEFAULT_FOCUS_SESSIONS_PER_CYCLE
+          );
+          const shortBreakDuration =
+            state.shortBreakDuration ?? DEFAULT_SHORT_BREAK_SECONDS;
+          const longBreakDuration =
+            state.longBreakDuration ?? DEFAULT_LONG_BREAK_SECONDS;
+          const focusDuration =
+            state.focusDuration ?? DEFAULT_FOCUS_DURATION_SECONDS;
+
+          let updatedFocusSessions = state.completedFocusSessions ?? 0;
+          let nextIsRest: boolean;
+          let nextTimerSeconds: number;
+          let nextBreakDuration: number;
+
+          if (!state.isRest) {
+            updatedFocusSessions += 1;
+            const shouldTakeLongBreak =
+              updatedFocusSessions % focusSessionsPerCycle === 0;
+            nextIsRest = true;
+            nextTimerSeconds = shouldTakeLongBreak
+              ? longBreakDuration
+              : shortBreakDuration;
+            nextBreakDuration = nextTimerSeconds;
+          } else {
+            nextIsRest = false;
+            nextTimerSeconds = focusDuration;
+            nextBreakDuration = shortBreakDuration;
+            if (updatedFocusSessions >= focusSessionsPerCycle) {
+              updatedFocusSessions = 0;
+            }
+          }
+
           const updated = {
             ...state,
-            isRest: !state.isRest,
+            isRest: nextIsRest,
             isRunning: false,
-            timerSeconds: nextDuration,
+            timerSeconds: nextTimerSeconds,
+            focusDuration,
+            breakDuration: nextBreakDuration,
+            shortBreakDuration,
+            longBreakDuration,
+            focusSessionsPerCycle,
+            completedFocusSessions: updatedFocusSessions,
             startTime: null,
             notificationId: null,
             lastActiveTime: now,

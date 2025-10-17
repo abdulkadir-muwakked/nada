@@ -1,5 +1,5 @@
-import TimerPresets from "@/components/timer/TimerPresets";
 import { useAuth } from "@clerk/clerk-expo";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import {
@@ -59,6 +59,9 @@ const NadaHomeContent = ({
   router,
 }: NadaHomeContentProps) => {
   // Use our custom hooks for timer and session management
+  const { currentSession, sessionGoal, streak, recordCompletedSession } =
+    useSession();
+
   const {
     isRunning,
     isRest,
@@ -70,10 +73,11 @@ const NadaHomeContent = ({
     currentMessage,
     startTimer,
     toggleTimerMode,
-    updateTimerDuration,
-  } = useTimer();
-
-  const { currentSession, sessionGoal, streak } = useSession();
+  } = useTimer({
+    onFocusComplete: async () => {
+      await recordCompletedSession();
+    },
+  });
   const { theme, colors, isDark } = useTheme();
   const themedStyles = useMemo(() => createStyles(theme), [theme]);
 
@@ -153,12 +157,12 @@ const NadaHomeContent = ({
           {isSignedIn ? (
             <View style={themedStyles.authButtonsContainer}>
               <TouchableOpacity
-                style={themedStyles.authButton}
-                onPress={() =>
-                  console.log("Profile functionality not implemented")
-                }
+                style={themedStyles.settingsButton}
+                onPress={() => router.push("/settings")}
+                accessibilityRole="button"
+                accessibilityLabel="Open settings"
               >
-                <Text style={themedStyles.authButtonText}>Profile</Text>
+                <Feather name="settings" size={18} color={colors.text} />
               </TouchableOpacity>
               <View style={themedStyles.signOutButtonContainer}>
                 <SignOutButton />
@@ -234,13 +238,6 @@ const NadaHomeContent = ({
           isRest={isRest}
           isRunning={isRunning}
           taskCompleted={taskCompleted}
-        />
-
-        <TimerPresets
-          focusDuration={focusDuration}
-          breakDuration={breakDuration}
-          isRest={isRest}
-          updateTimerDuration={updateTimerDuration}
         />
 
         <SessionInfo
@@ -349,6 +346,17 @@ const createStyles = (theme: NadaThemeType) =>
     authButtonSecondary: {
       backgroundColor: theme.colors.highlight,
       borderColor: theme.colors.highlightBorder,
+    },
+
+    settingsButton: {
+      backgroundColor: theme.colors.overlay,
+      borderRadius: theme.borderRadius.circle,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
     },
 
     authButtonText: {

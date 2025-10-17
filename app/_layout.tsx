@@ -8,6 +8,7 @@ import { Alert, AppState, AppStateStatus } from "react-native";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import SafeScreen from "../components/SafeScreen";
 import { NadaTheme } from "../constants/NadaTheme";
+import { TimerSettingsProvider } from "../context/TimerSettingsContext";
 import { initializeAdMob } from "../utils/adService";
 import appStartupTracker from "../utils/appStartupTracker";
 import networkStatusWatcher from "../utils/networkStatusWatcher";
@@ -166,9 +167,11 @@ function Layout() {
           backgroundColor={NadaTheme.colors.background}
           translucent={false}
         />
-        <SafeScreen>
-          <Slot />
-        </SafeScreen>
+        <TimerSettingsProvider>
+          <SafeScreen>
+            <Slot />
+          </SafeScreen>
+        </TimerSettingsProvider>
       </ClerkProvider>
     </GlobalErrorBoundary>
   );

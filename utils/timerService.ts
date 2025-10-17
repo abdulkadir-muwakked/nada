@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppStateStatus } from "react-native";
+import { defaultTimerSettings } from "../context/TimerSettingsContext";
+import { TimerState } from "../types/timer";
 import {
   BREAK_SESSION_END_NOTIFICATION,
   cancelAllScheduledNotifications,
@@ -10,18 +12,6 @@ import {
 // Storage keys
 const TIMER_STATE_KEY = "@nada_timer_state";
 
-// Timer state interface
-export interface TimerState {
-  isRunning: boolean;
-  isRest: boolean;
-  timerSeconds: number;
-  focusDuration: number;
-  breakDuration: number;
-  startTime: number | null;
-  notificationId: string | null;
-  lastActiveTime: number;
-}
-
 // Initialize timer state
 export const initializeTimerState = (): TimerState => ({
   isRunning: false,
@@ -29,9 +19,13 @@ export const initializeTimerState = (): TimerState => ({
   timerSeconds: 25 * 60, // Default 25 minutes
   focusDuration: 25 * 60,
   breakDuration: 5 * 60,
+  shortBreakDuration: 5 * 60,
+  longBreakDuration: 25 * 60,
+  focusSessionsPerCycle: 4,
   startTime: null,
   notificationId: null,
   lastActiveTime: Date.now(),
+  completedFocusSessions: 0,
 });
 
 // Save timer state to storage
@@ -47,7 +41,7 @@ export const saveTimerState = async (timerState: TimerState): Promise<void> => {
 export const loadTimerState = async (): Promise<TimerState | null> => {
   try {
     const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
-    return savedState ? JSON.parse(savedState) : null;
+    return savedState ? (JSON.parse(savedState) as TimerState) : null;
   } catch (error) {
     console.error("Error loading timer state:", error);
     return null;
@@ -246,26 +240,59 @@ export const handleAppStateChange = async (
 
     // Check if timer completed while in background
     if (remainingSeconds <= 0) {
-      // Timer completed, handle session completion
-      const isRest = timerState.isRest;
-      const duration = !isRest
-        ? timerState.breakDuration // Switch to break
-        : timerState.focusDuration; // Switch back to focus
+      const focusSessionsPerCycle = Math.max(
+        1,
+        timerState.focusSessionsPerCycle || defaultTimerSettings.focusSessionsPerCycle
+      );
+      const shortBreakDuration =
+        timerState.shortBreakDuration ||
+        defaultTimerSettings.shortBreakMinutes * 60;
+      const longBreakDuration =
+        timerState.longBreakDuration ||
+        defaultTimerSettings.longBreakMinutes * 60;
+
+      let updatedFocusSessions = timerState.completedFocusSessions || 0;
+      let nextIsRest: boolean;
+      let nextTimerSeconds: number;
+      let nextBreakDuration: number;
+
+      if (!timerState.isRest) {
+        // Focus session completed
+        updatedFocusSessions += 1;
+        const shouldTakeLongBreak =
+          updatedFocusSessions % focusSessionsPerCycle === 0;
+        nextIsRest = true;
+        nextTimerSeconds = shouldTakeLongBreak
+          ? longBreakDuration
+          : shortBreakDuration;
+        nextBreakDuration = nextTimerSeconds;
+      } else {
+        // Break completed
+        nextIsRest = false;
+        nextTimerSeconds = timerState.focusDuration;
+        nextBreakDuration = shortBreakDuration;
+        if (updatedFocusSessions >= focusSessionsPerCycle) {
+          updatedFocusSessions = 0;
+        }
+      }
 
       const updatedState: TimerState = {
         ...timerState,
-        isRest: !isRest, // Toggle mode
-        timerSeconds: duration,
+        isRest: nextIsRest,
+        isRunning: false,
+        timerSeconds: nextTimerSeconds,
+        focusDuration: timerState.focusDuration,
+        breakDuration: nextBreakDuration,
+        shortBreakDuration,
+        longBreakDuration,
+        focusSessionsPerCycle,
         startTime: null,
-        isRunning: false, // Auto-pause when completed
         notificationId: null,
         lastActiveTime: now,
+        completedFocusSessions: updatedFocusSessions,
       };
 
-      // Cancel any scheduled notifications
       await cancelAllScheduledNotifications();
-
-      // Save updated state
       await saveTimerState(updatedState);
       return updatedState;
     } else {

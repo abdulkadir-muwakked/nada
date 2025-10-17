@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, AppStateStatus } from "react-native";
 import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import {
   getBreakMessage,
   getResumeMessage,
   getSessionStartMessage,
 } from "../constants/AuthMessages";
-import {
-  DEFAULT_REST_PRESET,
-  TIMER_PRESETS,
-} from "../constants/timerConstants";
+import { useTimerSettings } from "../context/TimerSettingsContext";
 import { TimerState, UseTimerProps, UseTimerReturn } from "../types/timer";
 import {
   cancelAllScheduledNotifications,
@@ -30,11 +27,43 @@ import {
 } from "../utils/timerService";
 
 export const useTimer = ({
-  initialFocusDuration = TIMER_PRESETS[1].value, // Default 25m
-  initialBreakDuration = DEFAULT_REST_PRESET.value, // Default 5m
+  initialFocusDuration,
+  initialBreakDuration,
+  onFocusComplete,
 }: UseTimerProps = {}): UseTimerReturn => {
-  const initialFocusRef = useRef(initialFocusDuration);
-  const initialBreakRef = useRef(initialBreakDuration);
+  const { settings } = useTimerSettings();
+
+  const focusDurationSettingSeconds = useMemo(
+    () => Math.max(60, Math.round(settings.focusDurationMinutes) * 60),
+    [settings.focusDurationMinutes]
+  );
+
+  const shortBreakSettingSeconds = useMemo(
+    () => Math.max(60, Math.round(settings.shortBreakMinutes) * 60),
+    [settings.shortBreakMinutes]
+  );
+
+  const longBreakSettingSeconds = useMemo(
+    () => Math.max(60, Math.round(settings.longBreakMinutes) * 60),
+    [settings.longBreakMinutes]
+  );
+
+  const focusSessionsPerCycleSetting = useMemo(
+    () => Math.max(1, Math.round(settings.focusSessionsPerCycle)),
+    [settings.focusSessionsPerCycle]
+  );
+
+  const defaultFocusSeconds =
+    initialFocusDuration ?? focusDurationSettingSeconds;
+  const defaultShortBreakSeconds =
+    initialBreakDuration ?? shortBreakSettingSeconds;
+  const defaultLongBreakSeconds = longBreakSettingSeconds;
+
+  const initialFocusRef = useRef(defaultFocusSeconds);
+  const initialBreakRef = useRef(defaultShortBreakSeconds);
+  const longBreakRef = useRef(defaultLongBreakSeconds);
+  const focusCycleRef = useRef(focusSessionsPerCycleSetting);
+  const shortBreakRef = useRef(defaultShortBreakSeconds);
 
   // Reference to app state
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -45,18 +74,20 @@ export const useTimer = ({
 
   // Timer state
   const [focusDuration, setFocusDuration] =
-    useState<number>(initialFocusDuration);
-  const [breakDuration, setBreakDuration] =
-    useState<number>(initialBreakDuration);
+    useState<number>(defaultFocusSeconds);
+  const [breakDuration, setBreakDuration] = useState<number>(
+    defaultShortBreakSeconds
+  );
   const [selectedPreset, setSelectedPreset] =
-    useState<number>(initialFocusDuration);
-  const [timerSeconds, setTimerSeconds] = useState<number>(selectedPreset);
+    useState<number>(defaultFocusSeconds);
+  const [timerSeconds, setTimerSeconds] = useState<number>(defaultFocusSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const [isRest, setIsRest] = useState(false);
   const [currentMessage, setCurrentMessage] = useState<string>(
     getSessionStartMessage()
   );
   const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
+  const [, setCompletedFocusSessions] = useState<number>(0);
 
   // Notification state
   const [notificationsPermission, setNotificationsPermission] =
@@ -67,8 +98,9 @@ export const useTimer = ({
   const timerStateRef = useRef<TimerState | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimestampRef = useRef<number | null>(null);
-  const latestTimerSecondsRef = useRef<number>(selectedPreset);
+  const latestTimerSecondsRef = useRef<number>(defaultFocusSeconds);
   const completionTriggeredRef = useRef<boolean>(false);
+  const completedFocusSessionsRef = useRef<number>(0);
 
   useEffect(() => {
     latestTimerSecondsRef.current = timerSeconds;
@@ -80,55 +112,170 @@ export const useTimer = ({
     }
   }, [isRunning]);
 
-  // Helper function to keep timer state synchronized
-  const synchronizeTimerState = async (overrides: Partial<TimerState> = {}) => {
-    if (!timerStateRef.current) {
-      timerStateRef.current = initializeTimerState();
-    }
+  useEffect(() => {
+    const focusSeconds = focusDurationSettingSeconds;
+    const shortBreakSeconds = shortBreakSettingSeconds;
+    const longBreakSeconds = longBreakSettingSeconds;
+    const sessionsPerCycle = focusSessionsPerCycleSetting;
 
-    const isRunningState = overrides.isRunning ?? isRunning;
-    const isRestState = overrides.isRest ?? isRest;
-    const focusValue = overrides.focusDuration ?? focusDuration;
-    const breakValue = overrides.breakDuration ?? breakDuration;
-    const secondsValue = overrides.timerSeconds ?? timerSeconds;
-    const notificationValue = overrides.notificationId ?? notificationId;
-    const activeDuration = isRestState ? breakValue : focusValue;
+    initialFocusRef.current = focusSeconds;
+    initialBreakRef.current = shortBreakSeconds;
+    longBreakRef.current = longBreakSeconds;
+    focusCycleRef.current = sessionsPerCycle;
+    shortBreakRef.current = shortBreakSeconds;
 
-    let startTimeValue: number | null;
-    if (overrides.startTime !== undefined) {
-      startTimeValue = overrides.startTime;
-    } else if (isRunningState && secondsValue > 0) {
-      startTimeValue =
-        startTimestampRef.current ??
-        Date.now() - (activeDuration - secondsValue) * 1000;
-    } else {
-      startTimeValue = null;
-    }
+    const adjustTimer = (previousDuration: number, nextDuration: number) => {
+      if (previousDuration === nextDuration) {
+        return;
+      }
 
-    if (isRunningState && startTimeValue !== null) {
-      startTimestampRef.current = startTimeValue;
-    }
+      const elapsed = Math.max(0, previousDuration - timerSeconds);
+      const newRemaining = Math.max(0, nextDuration - elapsed);
 
-    if (!isRunningState) {
-      startTimestampRef.current = null;
-    }
-
-    const currentState: TimerState = {
-      ...timerStateRef.current,
-      isRunning: isRunningState,
-      isRest: isRestState,
-      timerSeconds: secondsValue,
-      focusDuration: focusValue,
-      breakDuration: breakValue,
-      startTime: startTimeValue,
-      notificationId: notificationValue,
-      lastActiveTime: Date.now(),
+      if (isRunning) {
+        if (startTimestampRef.current) {
+          startTimestampRef.current = Date.now() - elapsed * 1000;
+        }
+        if (latestTimerSecondsRef.current !== newRemaining) {
+          latestTimerSecondsRef.current = newRemaining;
+        }
+        if (timerSeconds !== newRemaining) {
+          setTimerSeconds(newRemaining);
+        }
+      } else {
+        if (latestTimerSecondsRef.current !== nextDuration) {
+          latestTimerSecondsRef.current = nextDuration;
+        }
+        if (timerSeconds !== nextDuration) {
+          setTimerSeconds(nextDuration);
+        }
+      }
     };
 
-    await saveTimerState(currentState);
-    timerStateRef.current = currentState;
-    return currentState;
-  };
+    if (isRest) {
+      const isLongBreak =
+        completedFocusSessionsRef.current % sessionsPerCycle === 0 &&
+        completedFocusSessionsRef.current !== 0;
+      const targetBreak = isLongBreak ? longBreakSeconds : shortBreakSeconds;
+
+      if (breakDuration !== targetBreak) {
+        setBreakDuration(targetBreak);
+      }
+      adjustTimer(breakDuration, targetBreak);
+    } else {
+      if (focusDuration !== focusSeconds) {
+        setFocusDuration(focusSeconds);
+      }
+      if (selectedPreset !== focusSeconds) {
+        setSelectedPreset(focusSeconds);
+      }
+      adjustTimer(focusDuration, focusSeconds);
+    }
+  }, [
+    focusDurationSettingSeconds,
+    shortBreakSettingSeconds,
+    longBreakSettingSeconds,
+    focusSessionsPerCycleSetting,
+    isRest,
+    isRunning,
+    timerSeconds,
+    focusDuration,
+    breakDuration,
+    selectedPreset,
+  ]);
+
+  // Helper function to keep timer state synchronized
+  const synchronizeTimerState = useCallback(
+    async (overrides: Partial<TimerState> = {}) => {
+      if (!timerStateRef.current) {
+        timerStateRef.current = initializeTimerState();
+      }
+
+      const isRunningState = overrides.isRunning ?? isRunning;
+      const isRestState = overrides.isRest ?? isRest;
+      const focusValue = overrides.focusDuration ?? focusDuration;
+      const breakValue = overrides.breakDuration ?? breakDuration;
+      const shortBreakValue =
+        overrides.shortBreakDuration ??
+        timerStateRef.current?.shortBreakDuration ??
+        shortBreakRef.current;
+      const longBreakValue =
+        overrides.longBreakDuration ??
+        timerStateRef.current?.longBreakDuration ??
+        longBreakRef.current;
+      const focusCycleValue =
+        overrides.focusSessionsPerCycle ??
+        timerStateRef.current?.focusSessionsPerCycle ??
+        focusCycleRef.current;
+      const secondsValue = overrides.timerSeconds ?? timerSeconds;
+      const notificationValue = overrides.notificationId ?? notificationId;
+      const completedFocusSessionsValue =
+        overrides.completedFocusSessions ??
+        timerStateRef.current?.completedFocusSessions ??
+        completedFocusSessionsRef.current;
+
+      if (completedFocusSessionsRef.current !== completedFocusSessionsValue) {
+        completedFocusSessionsRef.current = completedFocusSessionsValue;
+        setCompletedFocusSessions((prev) =>
+          prev === completedFocusSessionsValue
+            ? prev
+            : completedFocusSessionsValue
+        );
+      }
+      const activeDuration = isRestState ? breakValue : focusValue;
+
+      let startTimeValue: number | null;
+      if (overrides.startTime !== undefined) {
+        startTimeValue = overrides.startTime;
+      } else if (isRunningState && secondsValue > 0) {
+        startTimeValue =
+          startTimestampRef.current ??
+          Date.now() - (activeDuration - secondsValue) * 1000;
+      } else {
+        startTimeValue = null;
+      }
+
+      if (isRunningState && startTimeValue !== null) {
+        startTimestampRef.current = startTimeValue;
+      }
+
+      if (!isRunningState) {
+        startTimestampRef.current = null;
+      }
+
+      const currentState: TimerState = {
+        ...timerStateRef.current,
+        isRunning: isRunningState,
+        isRest: isRestState,
+        timerSeconds: secondsValue,
+        focusDuration: focusValue,
+        breakDuration: breakValue,
+        shortBreakDuration: shortBreakValue,
+        longBreakDuration: longBreakValue,
+        focusSessionsPerCycle: focusCycleValue,
+        startTime: startTimeValue,
+        notificationId: notificationValue,
+        lastActiveTime: Date.now(),
+        completedFocusSessions: completedFocusSessionsValue,
+      };
+
+      shortBreakRef.current = shortBreakValue;
+      longBreakRef.current = longBreakValue;
+      focusCycleRef.current = focusCycleValue;
+
+      await saveTimerState(currentState);
+      timerStateRef.current = currentState;
+      return currentState;
+    },
+    [
+      breakDuration,
+      focusDuration,
+      isRest,
+      isRunning,
+      notificationId,
+      timerSeconds,
+    ]
+  );
 
   // Initialize notification permissions, streak data, and timer state
   useEffect(() => {
@@ -153,6 +300,23 @@ export const useTimer = ({
           setIsRest(savedTimerState.isRest);
           setFocusDuration(savedTimerState.focusDuration);
           setBreakDuration(savedTimerState.breakDuration);
+          const savedShortBreak =
+            savedTimerState.shortBreakDuration ?? defaultShortBreakSeconds;
+          const savedLongBreak =
+            savedTimerState.longBreakDuration ?? defaultLongBreakSeconds;
+          const savedCycle =
+            savedTimerState.focusSessionsPerCycle ??
+            focusSessionsPerCycleSetting;
+          shortBreakRef.current = savedShortBreak;
+          longBreakRef.current = savedLongBreak;
+          focusCycleRef.current = savedCycle;
+          initialBreakRef.current = savedShortBreak;
+          initialFocusRef.current = savedTimerState.focusDuration;
+          const savedFocusCount = savedTimerState.completedFocusSessions ?? 0;
+          completedFocusSessionsRef.current = savedFocusCount;
+          setCompletedFocusSessions((prev) =>
+            prev === savedFocusCount ? prev : savedFocusCount
+          );
 
           // Calculate remaining time based on when the timer was last active
           let restoredSeconds: number;
@@ -188,12 +352,25 @@ export const useTimer = ({
               savedTimerState.isRunning && restoredStartTime
                 ? restoredStartTime
                 : null,
+            completedFocusSessions: savedFocusCount,
+            shortBreakDuration: savedShortBreak,
+            longBreakDuration: savedLongBreak,
+            focusSessionsPerCycle: savedCycle,
           };
         } else {
           // Initialize timer state with defaults
           const initialState = initializeTimerState();
           initialState.focusDuration = initialFocusRef.current;
           initialState.breakDuration = initialBreakRef.current;
+          initialState.shortBreakDuration = defaultShortBreakSeconds;
+          initialState.longBreakDuration = defaultLongBreakSeconds;
+          initialState.focusSessionsPerCycle = focusSessionsPerCycleSetting;
+          initialState.completedFocusSessions = 0;
+          shortBreakRef.current = defaultShortBreakSeconds;
+          longBreakRef.current = defaultLongBreakSeconds;
+          focusCycleRef.current = focusSessionsPerCycleSetting;
+          completedFocusSessionsRef.current = 0;
+          setCompletedFocusSessions((prev) => (prev === 0 ? prev : 0));
           timerStateRef.current = initialState;
           await saveTimerState(initialState);
         }
@@ -225,7 +402,6 @@ export const useTimer = ({
         timerStateRef.current = initializeTimerState();
       }
 
-      const baseState = timerStateRef.current || initializeTimerState();
       const activeDuration = isRest ? breakDuration : focusDuration;
       const shouldTrackStart = isRunning && timerSeconds > 0;
       const derivedStartTime = shouldTrackStart
@@ -241,17 +417,19 @@ export const useTimer = ({
         startTimestampRef.current = null;
       }
 
-      const currentTimerState: TimerState = {
-        ...baseState,
+      const currentTimerState = await synchronizeTimerState({
         isRunning,
         isRest,
         timerSeconds,
         focusDuration,
         breakDuration,
+        shortBreakDuration: shortBreakRef.current,
+        longBreakDuration: longBreakRef.current,
+        focusSessionsPerCycle: focusCycleRef.current,
         startTime: derivedStartTime,
         notificationId,
-        lastActiveTime: Date.now(),
-      };
+        completedFocusSessions: completedFocusSessionsRef.current,
+      });
 
       // Use the timer service to handle app state changes
       const updatedState = await handleAppStateChange(
@@ -265,6 +443,24 @@ export const useTimer = ({
         // Update our local state
         timerStateRef.current = updatedState;
         startTimestampRef.current = updatedState.startTime;
+        if (focusDuration !== updatedState.focusDuration) {
+          setFocusDuration(updatedState.focusDuration);
+        }
+        if (breakDuration !== updatedState.breakDuration) {
+          setBreakDuration(updatedState.breakDuration);
+        }
+        initialFocusRef.current = updatedState.focusDuration;
+        initialBreakRef.current = updatedState.shortBreakDuration;
+        shortBreakRef.current = updatedState.shortBreakDuration;
+        longBreakRef.current = updatedState.longBreakDuration;
+        focusCycleRef.current = updatedState.focusSessionsPerCycle;
+        completedFocusSessionsRef.current =
+          updatedState.completedFocusSessions ?? 0;
+        setCompletedFocusSessisons((prev) =>
+          prev === completedFocusSessionsRef.current
+            ? prev
+            : completedFocusSessionsRef.current
+        );
 
         // App going to background - schedule notification if timer is running
         if (
@@ -410,9 +606,13 @@ export const useTimer = ({
             timerSeconds,
             focusDuration,
             breakDuration,
+            shortBreakDuration: shortBreakRef.current,
+            longBreakDuration: longBreakRef.current,
+            focusSessionsPerCycle: focusCycleRef.current,
             startTime,
             notificationId,
             lastActiveTime: Date.now(),
+            completedFocusSessions: completedFocusSessionsRef.current,
           };
 
           await saveTimerState(finalState);
@@ -432,6 +632,124 @@ export const useTimer = ({
     breakDuration,
     notificationId,
   ]);
+
+  const handleTimerCompletion = useCallback(
+    async (restModeCompleted: boolean) => {
+      completionTriggeredRef.current = true;
+
+      try {
+        await cancelAllScheduledNotifications();
+      } catch (error) {
+        console.error("Error cancelling scheduled notifications:", error);
+      }
+
+      setNotificationId(null);
+      startTimestampRef.current = null;
+
+      try {
+        await sendTimerCompleteNotification(restModeCompleted);
+      } catch (error) {
+        console.error("Error sending completion notification:", error);
+      }
+
+      if (appStateRef.current === "active") {
+        try {
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success
+          );
+        } catch (error) {
+          console.error("Error triggering haptics:", error);
+        }
+      }
+
+      const focusDefault = initialFocusRef.current;
+      const shortBreakDefault = shortBreakRef.current;
+      const longBreakDefault = longBreakRef.current;
+      const focusSessionsPerCycle = Math.max(
+        1,
+        focusCycleRef.current || focusSessionsPerCycleSetting
+      );
+      let nextIsRest: boolean;
+      let nextTimerSeconds: number;
+      let nextBreakDurationValue = breakDuration;
+      let updatedFocusCount = completedFocusSessionsRef.current;
+      const now = Date.now();
+
+      if (!restModeCompleted) {
+        setTaskCompleted(true);
+        const incremented = completedFocusSessionsRef.current + 1;
+        updatedFocusCount = incremented;
+        const shouldTakeLongBreak = incremented % focusSessionsPerCycle === 0;
+        nextIsRest = true;
+        nextTimerSeconds = shouldTakeLongBreak
+          ? longBreakDefault
+          : shortBreakDefault;
+        nextBreakDurationValue = nextTimerSeconds;
+        setBreakDuration(nextTimerSeconds);
+        setFocusDuration(focusDefault);
+        setIsRest(true);
+        setCurrentMessage(getBreakMessage());
+        try {
+          if (onFocusComplete) {
+            await onFocusComplete();
+          }
+        } catch (error) {
+          console.error("Error completing focus session:", error);
+        }
+      } else {
+        setTaskCompleted(false);
+        nextIsRest = false;
+        nextTimerSeconds = focusDefault;
+        nextBreakDurationValue = shortBreakDefault;
+        setBreakDuration(shortBreakDefault);
+        setFocusDuration(focusDefault);
+        setIsRest(false);
+        setCurrentMessage(getSessionStartMessage());
+        if (completedFocusSessionsRef.current >= focusSessionsPerCycle) {
+          updatedFocusCount = 0;
+        }
+        setSelectedPreset(focusDefault);
+      }
+
+      shortBreakRef.current = shortBreakDefault;
+      longBreakRef.current = longBreakDefault;
+      focusCycleRef.current = focusSessionsPerCycle;
+
+      completedFocusSessionsRef.current = updatedFocusCount;
+      setCompletedFocusSessions((prev) =>
+        prev === updatedFocusCount ? prev : updatedFocusCount
+      );
+      latestTimerSecondsRef.current = nextTimerSeconds;
+      setTimerSeconds(nextTimerSeconds);
+      setIsRunning(false);
+      completionTriggeredRef.current = false;
+      expectedTimerSecondsRef.current = null;
+
+      const updatedState: TimerState = {
+        ...(timerStateRef.current || initializeTimerState()),
+        isRunning: false,
+        isRest: nextIsRest,
+        timerSeconds: nextTimerSeconds,
+        focusDuration: focusDefault,
+        breakDuration: nextBreakDurationValue,
+        shortBreakDuration: shortBreakDefault,
+        longBreakDuration: longBreakDefault,
+        focusSessionsPerCycle,
+        startTime: null,
+        notificationId: null,
+        lastActiveTime: now,
+        completedFocusSessions: updatedFocusCount,
+      };
+
+      timerStateRef.current = updatedState;
+      try {
+        await saveTimerState(updatedState);
+      } catch (error) {
+        console.error("Error saving completion state:", error);
+      }
+    },
+    [breakDuration, focusSessionsPerCycleSetting, onFocusComplete]
+  );
 
   // Consolidated timer countdown effect with timestamp-based updates
   useEffect(() => {
@@ -522,60 +840,6 @@ export const useTimer = ({
       }
     }
   };
-
-  const handleTimerCompletion = useCallback(
-    async (restModeCompleted: boolean) => {
-      completionTriggeredRef.current = true;
-
-      try {
-        await cancelAllScheduledNotifications();
-      } catch (error) {
-        console.error("Error cancelling scheduled notifications:", error);
-      }
-
-      setNotificationId(null);
-      startTimestampRef.current = null;
-
-      try {
-        await sendTimerCompleteNotification(restModeCompleted);
-      } catch (error) {
-        console.error("Error sending completion notification:", error);
-      }
-
-      if (appStateRef.current === "active") {
-        try {
-          await Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success
-          );
-        } catch (error) {
-          console.error("Error triggering haptics:", error);
-        }
-      }
-
-      setTaskCompleted(true);
-      latestTimerSecondsRef.current = 0;
-      setTimerSeconds(0);
-
-      if (restModeCompleted) {
-        setCurrentMessage(getResumeMessage());
-      } else {
-        setCurrentMessage(getBreakMessage());
-      }
-
-      try {
-        await synchronizeTimerState({
-          isRunning: false,
-          timerSeconds: 0,
-          notificationId: null,
-          startTime: null,
-        });
-      } catch (error) {
-        console.error("Error synchronizing completion state:", error);
-      }
-    },
-    [getBreakMessage, getResumeMessage, synchronizeTimerState]
-  );
-
   // Safe function to update timer durations without causing flickering or freezing
   const updateTimerDuration = useCallback(
     async (isRestMode: boolean, newDuration: number) => {
@@ -593,9 +857,12 @@ export const useTimer = ({
 
       if (isRestMode) {
         setBreakDuration(sanitizedDuration);
+        shortBreakRef.current = sanitizedDuration;
+        initialBreakRef.current = sanitizedDuration;
       } else {
         setFocusDuration(sanitizedDuration);
         setSelectedPreset(sanitizedDuration);
+        initialFocusRef.current = sanitizedDuration;
       }
 
       let updatedStartTime: number | null = null;
@@ -621,9 +888,17 @@ export const useTimer = ({
       const overrides: Partial<TimerState> = {};
       if (isRestMode) {
         overrides.breakDuration = sanitizedDuration;
+        overrides.shortBreakDuration = shortBreakRef.current;
+        overrides.longBreakDuration = longBreakRef.current;
       } else {
         overrides.focusDuration = sanitizedDuration;
+        overrides.shortBreakDuration = shortBreakRef.current;
+        overrides.longBreakDuration = longBreakRef.current;
       }
+
+      overrides.focusSessionsPerCycle = focusCycleRef.current;
+
+      overrides.completedFocusSessions = completedFocusSessionsRef.current;
 
       if (isEditingCurrentMode) {
         overrides.timerSeconds = latestTimerSecondsRef.current;
@@ -681,6 +956,9 @@ export const useTimer = ({
 
       // Update UI state first for immediate feedback
       setIsRunning(newRunningState);
+      if (newRunningState && taskCompleted) {
+        setTaskCompleted(false);
+      }
 
       // Synchronize state to ensure consistency
       const currentTimerState = await synchronizeTimerState({
@@ -747,9 +1025,13 @@ export const useTimer = ({
         timerSeconds,
         focusDuration,
         breakDuration,
+        shortBreakDuration: shortBreakRef.current,
+        longBreakDuration: longBreakRef.current,
+        focusSessionsPerCycle: focusCycleRef.current,
         startTime: null,
         notificationId,
         lastActiveTime: Date.now(),
+        completedFocusSessions: completedFocusSessionsRef.current,
       };
 
       const updatedState = await pauseTimerService(currentTimerState);
@@ -802,6 +1084,10 @@ export const useTimer = ({
       const newIsRest = !isRest;
       setIsRest(newIsRest);
       startTimestampRef.current = null;
+      completionTriggeredRef.current = false;
+      if (taskCompleted) {
+        setTaskCompleted(false);
+      }
 
       // Set the appropriate timer based on the new mode
       const newDuration = newIsRest ? breakDuration : focusDuration;
@@ -829,9 +1115,13 @@ export const useTimer = ({
         timerSeconds: newDuration,
         focusDuration,
         breakDuration,
+        shortBreakDuration: shortBreakRef.current,
+        longBreakDuration: longBreakRef.current,
+        focusSessionsPerCycle: focusCycleRef.current,
         startTime: null,
         notificationId: null,
         lastActiveTime: Date.now(),
+        completedFocusSessions: completedFocusSessionsRef.current,
       });
       timerStateRef.current = updatedState;
       startTimestampRef.current = updatedState.startTime;

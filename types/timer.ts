@@ -4,9 +4,13 @@ export interface TimerState {
   timerSeconds: number;
   focusDuration: number;
   breakDuration: number;
+  shortBreakDuration: number;
+  longBreakDuration: number;
+  focusSessionsPerCycle: number;
   startTime: number | null;
   lastActiveTime: number;
   notificationId: string | null;
+  completedFocusSessions: number;
 }
 
 export interface TimerPreset {
@@ -17,6 +21,7 @@ export interface TimerPreset {
 export interface UseTimerProps {
   initialFocusDuration?: number;
   initialBreakDuration?: number;
+  onFocusComplete?: () => Promise<void> | void;
 }
 
 export interface UseTimerReturn {
