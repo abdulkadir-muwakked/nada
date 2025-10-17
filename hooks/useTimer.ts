@@ -548,7 +548,6 @@ export const useTimer = ({
     breakDuration,
     notificationId,
   ]);
-
   // Initialize timer when mode changes but not running
   useEffect(() => {
     // Only update when not running
@@ -691,7 +690,10 @@ export const useTimer = ({
         setCurrentMessage(getBreakMessage());
         try {
           if (onFocusComplete) {
-            await onFocusComplete();
+            await onFocusComplete({
+              durationSeconds: focusDefault,
+              completedAt: new Date(now),
+            });
           }
         } catch (error) {
           console.error("Error completing focus session:", error);

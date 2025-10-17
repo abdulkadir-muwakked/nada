@@ -74,8 +74,8 @@ const NadaHomeContent = ({
     startTimer,
     toggleTimerMode,
   } = useTimer({
-    onFocusComplete: async () => {
-      await recordCompletedSession();
+    onFocusComplete: async ({ durationSeconds, completedAt }) => {
+      await recordCompletedSession(durationSeconds, completedAt);
     },
   });
   const { theme, colors, isDark } = useTheme();

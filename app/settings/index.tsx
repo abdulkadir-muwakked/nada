@@ -1,6 +1,8 @@
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,16 +10,31 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useTheme } from "../../hooks/useTheme";
+import ActivityHeatmap from "../../components/analytics/ActivityHeatmap";
 import type { TimerSettings } from "../../context/TimerSettingsContext";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
+import { useSession } from "../../hooks/useSession";
+import {
+  DailySummary,
+  HistoryRange,
+  useSessionHistory,
+} from "../../hooks/useSessionHistory";
+import { useTheme } from "../../hooks/useTheme";
 import type { NadaThemeColors, NadaThemeType } from "../../types/nada";
 
 const SettingsScreen = () => {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { settings, updateSettings, loading } = useTimerSettings();
+  const { refreshSessions } = useSession();
+  const {
+    range,
+    setRange,
+    data: historyData,
+    stats,
+    loading: historyLoading,
+    resetHistory,
+  } = useSessionHistory();
 
   const styles = useMemo(
     () => createStyles(colors, spacing),
@@ -26,12 +43,15 @@ const SettingsScreen = () => {
 
   type TimerSettingsField = keyof TimerSettings;
 
-  const [formValues, setFormValues] = useState<Record<TimerSettingsField, string>>({
+  const [formValues, setFormValues] = useState<
+    Record<TimerSettingsField, string>
+  >({
     focusSessionsPerCycle: String(settings.focusSessionsPerCycle),
     focusDurationMinutes: String(settings.focusDurationMinutes),
     shortBreakMinutes: String(settings.shortBreakMinutes),
     longBreakMinutes: String(settings.longBreakMinutes),
   });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     setFormValues({
@@ -41,6 +61,16 @@ const SettingsScreen = () => {
       longBreakMinutes: String(settings.longBreakMinutes),
     });
   }, [settings]);
+
+  useEffect(() => {
+    if (historyData.length === 0) {
+      setSelectedDate(null);
+      return;
+    }
+
+    const latest = historyData[historyData.length - 1].date;
+    setSelectedDate((prev) => (prev ? prev : latest));
+  }, [historyData]);
 
   const commitValue = useCallback(
     async (field: TimerSettingsField) => {
@@ -71,6 +101,56 @@ const SettingsScreen = () => {
     []
   );
 
+  const handleRangeChange = useCallback(
+    (value: HistoryRange) => {
+      setRange(value);
+      setSelectedDate(null);
+    },
+    [setRange]
+  );
+
+  const handleSelectDay = useCallback((summary: DailySummary) => {
+    setSelectedDate(summary.date);
+  }, []);
+
+  const handleResetHistory = useCallback(() => {
+    Alert.alert(
+      "Reset Progress",
+      "This will clear all recorded sessions and analytics. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            await resetHistory();
+            await refreshSessions();
+          },
+        },
+      ]
+    );
+  }, [refreshSessions, resetHistory]);
+
+  const selectedSummary = useMemo(() => {
+    if (!selectedDate) return undefined;
+    return historyData.find((entry) => entry.date === selectedDate);
+  }, [historyData, selectedDate]);
+
+  const formattedSelectedLabel = useMemo(() => {
+    if (!selectedSummary) return "Tap a day to inspect";
+    return formatDateForLabel(selectedSummary.date);
+  }, [selectedSummary]);
+
+  const formatSessionsMinutes = useCallback(
+    (sessions: number, minutes: number) => {
+      const minutesLabel = `${minutes} minute${minutes === 1 ? "" : "s"}`;
+      return `${sessions} session${
+        sessions === 1 ? "" : "s"
+      } – ${minutesLabel}`;
+    },
+    []
+  );
+
   const settingFields: {
     key: TimerSettingsField;
     label: string;
@@ -80,7 +160,7 @@ const SettingsScreen = () => {
     {
       key: "focusSessionsPerCycle",
       label: "Focus sessions per cycle",
-      description: "How many focus blocks make up one full cycle before a long break.",
+      description: "How many focus blocks before a long break.",
     },
     {
       key: "focusDurationMinutes",
@@ -95,61 +175,163 @@ const SettingsScreen = () => {
     {
       key: "longBreakMinutes",
       label: "Long break (minutes)",
-      description: "Extended recovery after a full cycle.",
-      suggestion: "Tip: many Pomodoro guides recommend 15 minutes here.",
+      description: "Extended rest after a full cycle.",
+      suggestion: "Tip: many guides recommend a 15 minute long break.",
     },
   ];
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={styles.backButton}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>
-        Tune your Pomodoro rhythm. Updates apply instantly to the current cycle.
-      </Text>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.formScroll}
-          contentContainerStyle={styles.formContent}
-          keyboardShouldPersistTaps="handled"
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <View style={styles.container}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          {settingFields.map(({ key, label, description, suggestion }) => (
-            <View key={key} style={styles.fieldCard}>
-              <Text style={styles.fieldLabel}>{label}</Text>
-              {description ? (
-                <Text style={styles.fieldDescription}>{description}</Text>
-              ) : null}
-              <TextInput
-                value={formValues[key]}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                onChangeText={(value) => handleChange(key, value)}
-                onEndEditing={() => commitValue(key)}
-                onSubmitEditing={() => commitValue(key)}
-                style={styles.input}
-                placeholder="Enter minutes"
-                placeholderTextColor={colors.textSecondary}
-              />
-              {suggestion ? (
-                <Text style={styles.fieldSuggestion}>{suggestion}</Text>
-              ) : null}
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>
+          Tune your Pomodoro rhythm. Updates apply instantly to the current
+          cycle.
+        </Text>
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Activity Heatmap</Text>
+            <View style={styles.rangeToggleRow}>
+              {["7d", "month"].map((value) => {
+                const castValue = value as HistoryRange;
+                const isActive = range === castValue;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.rangeToggle,
+                      isActive && styles.rangeToggleActive,
+                    ]}
+                    onPress={() => handleRangeChange(castValue)}
+                  >
+                    <Text
+                      style={[
+                        styles.rangeToggleText,
+                        isActive && styles.rangeToggleTextActive,
+                      ]}
+                    >
+                      {castValue === "7d" ? "Last 7 days" : "This month"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          ))}
-        </ScrollView>
-      )}
-    </View>
+          </View>
+
+          {historyLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : historyData.length === 0 ? (
+            <Text style={styles.emptyStateText}>
+              No focus sessions logged yet. Complete a session to see your
+              activity.
+            </Text>
+          ) : (
+            <ActivityHeatmap
+              data={historyData}
+              range={range}
+              selectedDate={selectedDate}
+              onSelect={handleSelectDay}
+            />
+          )}
+
+          <View style={styles.selectedSummaryContainer}>
+            <Text style={styles.selectedSummaryTitle}>
+              {formattedSelectedLabel}
+            </Text>
+            <Text style={styles.selectedSummaryBody}>
+              {selectedSummary
+                ? formatSessionsMinutes(
+                    selectedSummary.sessions,
+                    selectedSummary.minutes
+                  )
+                : "Tap a day to inspect"}
+            </Text>
+          </View>
+
+          <View style={styles.statsRow}>
+            <Text style={styles.statLine}>
+              ✅ Today:{" "}
+              {formatSessionsMinutes(stats.todaySessions, stats.todayMinutes)}
+            </Text>
+            <Text style={styles.statLine}>
+              📆 This Week:{" "}
+              {formatSessionsMinutes(stats.weekSessions, stats.weekMinutes)}
+            </Text>
+            {stats.bestDay ? (
+              <Text style={styles.statLine}>
+                🏆 Best Day: {formatDateForLabel(stats.bestDay.date)} –{" "}
+                {formatSessionsMinutes(
+                  stats.bestDay.sessions,
+                  stats.bestDay.minutes
+                )}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Advanced</Text>
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetHistory}
+            accessibilityRole="button"
+          >
+            <Text style={styles.resetButtonText}>Reset Progress</Text>
+          </TouchableOpacity>
+          <Text style={styles.resetHint}>
+            Clears all recorded sessions, today&apos;s count, and heatmap data.
+          </Text>
+        </View>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Timer Configuration</Text>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : (
+            <View style={styles.formContent}>
+              {settingFields.map(({ key, label, description, suggestion }) => (
+                <View key={key} style={styles.fieldCard}>
+                  <Text style={styles.fieldLabel}>{label}</Text>
+                  {description ? (
+                    <Text style={styles.fieldDescription}>{description}</Text>
+                  ) : null}
+                  <TextInput
+                    value={formValues[key]}
+                    keyboardType="number-pad"
+                    returnKeyType="done"
+                    onChangeText={(value) => handleChange(key, value)}
+                    onEndEditing={() => commitValue(key)}
+                    onSubmitEditing={() => commitValue(key)}
+                    style={styles.input}
+                    placeholder="Enter minutes"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  {suggestion ? (
+                    <Text style={styles.fieldSuggestion}>{suggestion}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
@@ -158,11 +340,17 @@ const createStyles = (
   spacing: NadaThemeType["spacing"]
 ) =>
   StyleSheet.create({
-    container: {
+    screen: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollContent: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
+      paddingBottom: spacing.xl,
+    },
+    container: {
+      gap: spacing.md,
     },
     backButton: {
       alignSelf: "flex-start",
@@ -179,32 +367,93 @@ const createStyles = (
       fontSize: 24,
       fontWeight: "700",
       color: colors.text,
-      marginBottom: spacing.xs,
     },
     subtitle: {
       fontSize: 16,
       color: colors.textSecondary,
       lineHeight: 22,
-      marginBottom: spacing.lg,
     },
-    loadingContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    formScroll: {
-      flex: 1,
-    },
-    formContent: {
-      paddingBottom: spacing.xl,
-      gap: spacing.md,
-    },
-    fieldCard: {
+    sectionCard: {
+      width: "100%",
       backgroundColor: colors.overlay,
       borderRadius: spacing.md,
       padding: spacing.md,
       borderWidth: 1,
       borderColor: colors.overlayBorder,
+      gap: spacing.md,
+    },
+    sectionHeader: {
+      gap: spacing.sm,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    rangeToggleRow: {
+      flexDirection: "row",
+      gap: spacing.xs,
+    },
+    rangeToggle: {
+      flex: 1,
+      paddingVertical: spacing.sm,
+      borderRadius: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.overlayBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rangeToggleActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    rangeToggleText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    rangeToggleTextActive: {
+      color: colors.background,
+    },
+    loadingContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: spacing.lg,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      paddingVertical: spacing.lg,
+    },
+    selectedSummaryContainer: {
+      gap: spacing.xs,
+    },
+    selectedSummaryTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    selectedSummaryBody: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    statsRow: {
+      gap: spacing.xs,
+    },
+    statLine: {
+      fontSize: 13,
+      color: colors.text,
+    },
+    formContent: {
+      gap: spacing.md,
+    },
+    fieldCard: {
+      backgroundColor: colors.background,
+      borderRadius: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.overlayBorder,
+      padding: spacing.md,
       gap: spacing.sm,
     },
     fieldLabel: {
@@ -232,6 +481,31 @@ const createStyles = (
       color: colors.textSecondary,
       fontStyle: "italic",
     },
+    resetButton: {
+      alignSelf: "flex-start",
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.overlayBorder,
+      backgroundColor: "transparent",
+    },
+    resetButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.primary,
+    },
+    resetHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
   });
+
+const formatDateForLabel = (date: string) =>
+  new Intl.DateTimeFormat("en", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(date));
 
 export default SettingsScreen;

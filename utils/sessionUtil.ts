@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const SESSIONS_COUNT_KEY = "@nada_sessions_count";
 const SESSION_GOAL_KEY = "@nada_session_goal";
 const LAST_RESET_DATE_KEY = "@nada_last_reset_date";
+const SESSION_HISTORY_KEY = "@nada_session_history_v1";
 
 // Default session goal
 const DEFAULT_GOAL = 4;
@@ -144,26 +145,98 @@ export const initializeSessions = async (): Promise<{
   }
 };
 
+type SessionHistoryMap = Record<string, { sessions: number; minutes: number }>;
+
+const formatDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const loadSessionHistory = async (): Promise<SessionHistoryMap> => {
+  try {
+    const raw = await AsyncStorage.getItem(SESSION_HISTORY_KEY);
+    if (raw) {
+      return JSON.parse(raw) as SessionHistoryMap;
+    }
+  } catch (error) {
+    console.error("Error loading session history:", error);
+  }
+  return {};
+};
+
+const saveSessionHistory = async (history: SessionHistoryMap): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SESSION_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error("Error saving session history:", error);
+  }
+};
+
 /**
  * Record a completed session and increment the count
  * @returns The updated sessions count
  */
-export const recordCompletedFocusSession = async (): Promise<number> => {
-  console.log("Recording completed focus session");
+export const recordCompletedFocusSession = async (
+  durationMinutes: number,
+  completedAt: Date = new Date()
+): Promise<number> => {
   try {
-    // Get current sessions count
+    const sanitizedMinutes = Math.max(1, Math.round(durationMinutes));
+
+    // Update daily session count
     const currentCount = await getSessionsCount();
-
-    // Increment by 1
     const newCount = currentCount + 1;
-
-    // Save the updated count
     await saveSessionsCount(newCount);
-    console.log("Updated sessions count:", newCount);
+
+    const history = await loadSessionHistory();
+    const key = formatDateKey(completedAt);
+    const existing = history[key] || { sessions: 0, minutes: 0 };
+    history[key] = {
+      sessions: existing.sessions + 1,
+      minutes: existing.minutes + sanitizedMinutes,
+    };
+    await saveSessionHistory(history);
 
     return newCount;
   } catch (error) {
     console.error("Error recording focus session:", error);
     return 0;
   }
+};
+
+export const getSessionHistory = async (): Promise<SessionHistoryMap> => {
+  return loadSessionHistory();
+};
+
+export const clearSessionHistory = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(SESSION_HISTORY_KEY);
+  } catch (error) {
+    console.error("Error clearing session history:", error);
+  }
+};
+
+export const resetSessionData = async (): Promise<void> => {
+  await clearSessionHistory();
+  await saveSessionsCount(0);
+  await saveLastResetDate(new Date());
+};
+
+export type { SessionHistoryMap };
+
+export default {
+  getSessionsCount,
+  getSessionGoal,
+  saveSessionsCount,
+  saveSessionGoal,
+  getLastResetDate,
+  saveLastResetDate,
+  checkAndResetSessions,
+  initializeSessions,
+  recordCompletedFocusSession,
+  getSessionHistory,
+  clearSessionHistory,
+  resetSessionData,
 };

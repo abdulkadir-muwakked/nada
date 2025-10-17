@@ -18,10 +18,15 @@ export interface TimerPreset {
   value: number;
 }
 
+export interface FocusCompletionPayload {
+  durationSeconds: number;
+  completedAt: Date;
+}
+
 export interface UseTimerProps {
   initialFocusDuration?: number;
   initialBreakDuration?: number;
-  onFocusComplete?: () => Promise<void> | void;
+  onFocusComplete?: (payload: FocusCompletionPayload) => Promise<void> | void;
 }
 
 export interface UseTimerReturn {
@@ -49,5 +54,9 @@ export interface UseSessionReturn {
   currentSession: number;
   sessionGoal: number;
   streak: number;
-  recordCompletedSession: () => Promise<number>;
+  recordCompletedSession: (
+    durationSeconds: number,
+    completedAt?: Date
+  ) => Promise<number>;
+  refreshSessions: () => Promise<void>;
 }
