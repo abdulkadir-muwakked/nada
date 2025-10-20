@@ -456,7 +456,7 @@ export const useTimer = ({
         focusCycleRef.current = updatedState.focusSessionsPerCycle;
         completedFocusSessionsRef.current =
           updatedState.completedFocusSessions ?? 0;
-        setCompletedFocusSessisons((prev) =>
+        setCompletedFocusSessions((prev) =>
           prev === completedFocusSessionsRef.current
             ? prev
             : completedFocusSessionsRef.current

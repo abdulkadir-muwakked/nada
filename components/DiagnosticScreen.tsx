@@ -50,18 +50,23 @@ export default function DiagnosticScreen({ error, errorInfo, resetError }) {
       try {
         const { width, height } = Dimensions.get("window");
 
+        const expoConfig = Constants.expoConfig;
+        const deviceName = Device.deviceName ?? "Unknown";
+        const buildNumber =
+          expoConfig?.ios?.buildNumber ??
+          (expoConfig?.android?.versionCode != null
+            ? String(expoConfig.android.versionCode)
+            : undefined);
+
         const info: DeviceInfoType = {
           platform: Platform.OS,
           version: Platform.Version,
-          device: (await Device.deviceName) || "Unknown",
+          device: deviceName,
           screenSize: `${width}x${height}`,
-          expoVersion: Constants.expoVersion || "N/A",
-          appVersion: Constants.manifest?.version || "N/A",
-          jsEngine: Constants.jsEngine || "N/A",
-          buildNumber:
-            Constants.manifest?.ios?.buildNumber ||
-            Constants.manifest?.android?.versionCode ||
-            "N/A",
+          expoVersion: Constants.expoVersion ?? "N/A",
+          appVersion: expoConfig?.version ?? "N/A",
+          jsEngine: Constants.jsEngine ?? "N/A",
+          buildNumber: buildNumber ?? "N/A",
         };
 
         setDeviceInfo(info);

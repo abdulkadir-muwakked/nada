@@ -112,6 +112,11 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const todayKey = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.toLocaleDateString("en-CA");
+  }, []);
   const weekRows = useMemo(() => buildWeekMatrix(data), [data]);
 
   return (
@@ -127,6 +132,7 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                 colors
               );
               const isSelected = selectedDate === day.date;
+              const isToday = day.date === todayKey;
 
               return (
                 <TouchableOpacity
@@ -135,13 +141,16 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     styles.cell,
                     { backgroundColor: color },
                     isSelected && styles.cellSelected,
+                    isToday && styles.cellToday,
                   ]}
                   onPress={() => onSelect(day)}
                   accessibilityRole="button"
                   accessibilityLabel={`${formatDayLabel(
                     day.date
                   )}: ${day.sessions} sessions, ${day.minutes} minutes`}
-                />
+                >
+                  {isToday ? <View style={styles.todayDot} pointerEvents="none" /> : null}
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -176,10 +185,21 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       borderRadius: 5,
       borderWidth: 1,
       borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     cellSelected: {
       borderColor: colors.primary,
       borderWidth: 2,
+    },
+    cellToday: {
+      borderColor: colors.accent,
+    },
+    todayDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.accent,
     },
     rangeLabel: {
       marginTop: 4,

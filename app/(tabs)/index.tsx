@@ -19,6 +19,7 @@ import Controls from "../../components/timer/Controls";
 import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
 import { useSession } from "../../hooks/useSession";
+import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useTheme } from "../../hooks/useTheme";
 import { useTimer } from "../../hooks/useTimer";
 import type { NadaThemeType } from "../../types/nada";
@@ -61,6 +62,12 @@ const NadaHomeContent = ({
   // Use our custom hooks for timer and session management
   const { currentSession, sessionGoal, streak, recordCompletedSession } =
     useSession();
+  const { settings } = useTimerSettings();
+
+  const configuredGoal = useMemo(
+    () => Math.max(1, Math.round(settings.focusSessionsPerCycle)),
+    [settings.focusSessionsPerCycle]
+  );
 
   const {
     isRunning,
@@ -242,7 +249,7 @@ const NadaHomeContent = ({
 
         <SessionInfo
           currentSession={currentSession}
-          sessionGoal={sessionGoal}
+          sessionGoal={configuredGoal ?? sessionGoal}
         />
 
         <Controls
