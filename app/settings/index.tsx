@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,7 +10,10 @@ import {
   View,
 } from "react-native";
 import ActivityHeatmap from "../../components/analytics/ActivityHeatmap";
-import type { TimerSettings } from "../../context/TimerSettingsContext";
+import type {
+  NadaPersona,
+  TimerSettings,
+} from "../../context/TimerSettingsContext";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useSession } from "../../hooks/useSession";
 import {
@@ -23,7 +25,6 @@ import { useTheme } from "../../hooks/useTheme";
 import type { NadaThemeColors, NadaThemeType } from "../../types/nada";
 
 const SettingsScreen = () => {
-  const router = useRouter();
   const { colors, spacing } = useTheme();
   const { settings, updateSettings, loading } = useTimerSettings();
   const { refreshSessions } = useSession();
@@ -42,15 +43,19 @@ const SettingsScreen = () => {
   );
 
   type TimerSettingsField = keyof TimerSettings;
+  type NumericTimerField = Exclude<TimerSettingsField, "persona">;
 
   const [formValues, setFormValues] = useState<
-    Record<TimerSettingsField, string>
+    Record<NumericTimerField, string>
   >({
     focusSessionsPerCycle: String(settings.focusSessionsPerCycle),
     focusDurationMinutes: String(settings.focusDurationMinutes),
     shortBreakMinutes: String(settings.shortBreakMinutes),
     longBreakMinutes: String(settings.longBreakMinutes),
   });
+  const [selectedPersona, setSelectedPersona] = useState<NadaPersona>(
+    settings.persona
+  );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,6 +65,7 @@ const SettingsScreen = () => {
       shortBreakMinutes: String(settings.shortBreakMinutes),
       longBreakMinutes: String(settings.longBreakMinutes),
     });
+    setSelectedPersona(settings.persona);
   }, [settings]);
 
   useEffect(() => {
@@ -73,7 +79,7 @@ const SettingsScreen = () => {
   }, [historyData]);
 
   const commitValue = useCallback(
-    async (field: TimerSettingsField) => {
+    async (field: NumericTimerField) => {
       const raw = formValues[field];
       const parsed = Number(raw);
       if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -95,10 +101,25 @@ const SettingsScreen = () => {
   );
 
   const handleChange = useCallback(
-    (field: TimerSettingsField, value: string) => {
+    (field: NumericTimerField, value: string) => {
       setFormValues((prev) => ({ ...prev, [field]: value }));
     },
     []
+  );
+
+  const toneOptions: { value: NadaPersona; label: string }[] = [
+    { value: "default", label: "Friendly" },
+    { value: "mean", label: "Mean" },
+    { value: "sugarcoated", label: "Sugarcoated" },
+    { value: "clown", label: "Clown" },
+  ];
+
+  const handlePersonaChange = useCallback(
+    async (value: NadaPersona) => {
+      setSelectedPersona(value);
+      await updateSettings({ persona: value });
+    },
+    [updateSettings]
   );
 
   const handleRangeChange = useCallback(
@@ -152,7 +173,7 @@ const SettingsScreen = () => {
   );
 
   const settingFields: {
-    key: TimerSettingsField;
+    key: NumericTimerField;
     label: string;
     description?: string;
     suggestion?: string;
@@ -186,16 +207,7 @@ const SettingsScreen = () => {
       contentContainerStyle={styles.scrollContent}
     >
       <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Settings</Text>
+      <Text style={styles.title}>Settings</Text>
         <Text style={styles.subtitle}>
           Tune your Pomodoro rhythm. Updates apply instantly to the current
           cycle.
@@ -299,17 +311,44 @@ const SettingsScreen = () => {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Timer Configuration</Text>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary} />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : (
+          <View style={styles.formContent}>
+            <View style={styles.toneRow}>
+              <Text style={styles.fieldLabel}>Default tone</Text>
+              <View style={styles.toneOptionsContainer}>
+                {toneOptions.map((option) => {
+                  const isActive = option.value === selectedPersona;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.toneOption,
+                        isActive && styles.toneOptionActive,
+                      ]}
+                      onPress={() => handlePersonaChange(option.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.toneOptionText,
+                          isActive && styles.toneOptionTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          ) : (
-            <View style={styles.formContent}>
-              {settingFields.map(({ key, label, description, suggestion }) => (
-                <View key={key} style={styles.fieldCard}>
-                  <Text style={styles.fieldLabel}>{label}</Text>
-                  {description ? (
-                    <Text style={styles.fieldDescription}>{description}</Text>
+            {settingFields.map(({ key, label, description, suggestion }) => (
+              <View key={key} style={styles.fieldCard}>
+                <Text style={styles.fieldLabel}>{label}</Text>
+                {description ? (
+                  <Text style={styles.fieldDescription}>{description}</Text>
                   ) : null}
                   <TextInput
                     value={formValues[key]}
@@ -351,17 +390,6 @@ const createStyles = (
     },
     container: {
       gap: spacing.md,
-    },
-    backButton: {
-      alignSelf: "flex-start",
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.sm,
-      borderRadius: spacing.sm,
-    },
-    backButtonText: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      fontWeight: "600",
     },
     title: {
       fontSize: 24,
@@ -456,6 +484,34 @@ const createStyles = (
       padding: spacing.md,
       gap: spacing.sm,
     },
+    toneRow: {
+      gap: spacing.sm,
+    },
+    toneOptionsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
+    },
+    toneOption: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      borderRadius: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.overlayBorder,
+      backgroundColor: colors.background,
+    },
+    toneOptionActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    toneOptionText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    toneOptionTextActive: {
+      color: colors.background,
+    },
     fieldLabel: {
       fontSize: 16,
       fontWeight: "600",
@@ -509,3 +565,7 @@ const formatDateForLabel = (date: string) =>
   }).format(new Date(date));
 
 export default SettingsScreen;
+
+export const screenOptions = {
+  title: "Settings",
+};

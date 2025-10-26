@@ -1,14 +1,14 @@
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import Constants from "expo-constants";
-import { Slot } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { Alert, AppState, AppStateStatus } from "react-native";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import SafeScreen from "../components/SafeScreen";
-import { NadaTheme } from "../constants/NadaTheme";
 import { TimerSettingsProvider } from "../context/TimerSettingsContext";
+import { useTheme } from "../hooks/useTheme";
 import { initializeAdMob } from "../utils/adService";
 import appStartupTracker from "../utils/appStartupTracker";
 import networkStatusWatcher from "../utils/networkStatusWatcher";
@@ -25,6 +25,7 @@ initializeOAuth();
 
 // Root Layout component
 function Layout() {
+  const { colors, isDark } = useTheme();
   // Track notification permission status - used to determine app functionality
   const [, setHasNotificationPermission] = useState(false);
 
@@ -163,13 +164,36 @@ function Layout() {
     <GlobalErrorBoundary>
       <ClerkProvider tokenCache={tokenCache}>
         <StatusBar
-          style="light"
-          backgroundColor={NadaTheme.colors.background}
+          style={isDark ? "light" : "dark"}
+          backgroundColor={colors.background}
           translucent={false}
         />
         <TimerSettingsProvider>
           <SafeScreen>
-            <Slot />
+            <Stack
+              screenOptions={{
+                headerTintColor: colors.text,
+                headerTitleStyle: {
+                  color: colors.text,
+                  fontWeight: "600",
+                },
+                headerStyle: {
+                  backgroundColor: colors.background,
+                },
+                headerShadowVisible: false,
+              }}
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="settings/index"
+                options={{
+                  title: "Settings",
+                  headerBackTitle: "Back",
+                }}
+              />
+            </Stack>
           </SafeScreen>
         </TimerSettingsProvider>
       </ClerkProvider>

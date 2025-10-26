@@ -8,11 +8,14 @@ import React, {
   useState,
 } from "react";
 
+export type NadaPersona = "default" | "mean" | "sugarcoated" | "clown";
+
 export interface TimerSettings {
   focusSessionsPerCycle: number;
   focusDurationMinutes: number;
   shortBreakMinutes: number;
   longBreakMinutes: number;
+  persona: NadaPersona;
 }
 
 interface TimerSettingsContextValue {
@@ -29,6 +32,7 @@ const defaultSettings: TimerSettings = {
   focusDurationMinutes: 25,
   shortBreakMinutes: 5,
   longBreakMinutes: 25,
+  persona: "default",
 };
 
 const TimerSettingsContext = createContext<TimerSettingsContextValue | null>(
@@ -41,6 +45,16 @@ const sanitizeNumber = (value: unknown, fallback: number, min = 1) => {
     return fallback;
   }
   return Math.round(parsed);
+};
+
+const sanitizePersona = (value: unknown): NadaPersona => {
+  if (typeof value === "string") {
+    const lower = value.toLowerCase();
+    if (["default", "mean", "sugarcoated", "clown"].includes(lower)) {
+      return lower as NadaPersona;
+    }
+  }
+  return defaultSettings.persona;
 };
 
 const sanitizeSettings = (values: Partial<TimerSettings>): TimerSettings => ({
@@ -64,6 +78,7 @@ const sanitizeSettings = (values: Partial<TimerSettings>): TimerSettings => ({
     defaultSettings.longBreakMinutes,
     1
   ),
+  persona: sanitizePersona(values.persona),
 });
 
 export const TimerSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
