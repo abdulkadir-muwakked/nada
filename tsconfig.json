@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/react-native/tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
     "allowJs": true,
@@ -16,14 +16,8 @@
       "DOM"
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./types"
-    ],
     "noImplicitAny": false,
     "module": "esnext"
   },

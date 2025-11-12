@@ -18,7 +18,7 @@ target 'nada' do
   use_expo_modules!
 
   # Add specific version for Google Mobile Ads SDK to match react-native-google-mobile-ads
-  pod 'Google-Mobile-Ads-SDK', '12.9.0'
+  pod 'Google-Mobile-Ads-SDK', '12.11.0'
 
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'

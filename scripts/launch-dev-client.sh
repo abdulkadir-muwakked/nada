@@ -76,7 +76,7 @@ if [ -z "$BOOTED_SIMULATOR" ]; then
 fi
 
 # Get bundle ID from app.json
-BUNDLE_ID=$(jq -r '.expo.ios.bundleIdentifier' ../app.json)
+BUNDLE_ID=$(jq -r '.expo.ios.bundleIdentifier' app.json)
 
 # Find the app in simulator
 APP_PATH=$(find ~/Library/Developer/CoreSimulator/Devices/$BOOTED_SIMULATOR/data/Containers/Bundle/Application -name "$BUNDLE_ID.app" -type d 2>/dev/null)

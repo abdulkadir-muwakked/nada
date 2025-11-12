@@ -18,8 +18,8 @@ import SpeechBubble from "../../components/SpeechBubble";
 import Controls from "../../components/timer/Controls";
 import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
-import { useSession } from "../../hooks/useSession";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
+import { useSession } from "../../hooks/useSession";
 import { useTheme } from "../../hooks/useTheme";
 import { useTimer } from "../../hooks/useTimer";
 import type { NadaThemeType } from "../../types/nada";
@@ -130,15 +130,6 @@ const NadaHomeContent = ({
       }
       // Then switch to rest mode
       await toggleTimerMode();
-    }
-  };
-
-  // Handle motivate button press
-  const handleMotivatePress = () => {
-    // Get a new motivational message based on current timer state
-    if (isSignedIn) {
-      // The message is already managed in the useTimer hook
-      // This is just to trigger a re-render with potentially a new message
     }
   };
 
@@ -261,7 +252,7 @@ const NadaHomeContent = ({
           onSkip={handleSkip}
         />
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={themedStyles.motivateBtn}
           onPress={handleMotivatePress}
         >
@@ -270,7 +261,7 @@ const NadaHomeContent = ({
               ? "Actually motivate me 🙄"
               : "Sign in for more features 🙄"}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {!isSignedIn && (
           <View style={themedStyles.authPromptContainer}>
