@@ -19,7 +19,7 @@ const NadaLogo: React.FC<NadaLogoProps> = ({
   };
 
   return (
-    <View style={{ alignItems: "center" }}>
+    <View style={{ alignItems: "center", marginBottom: 24 }}>
       <Text style={[styles.appTitle, { fontSize: fontSizes[size] }]}>nada</Text>
       {variant === "auth" && (
         <Text style={styles.tagline}>

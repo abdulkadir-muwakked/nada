@@ -230,8 +230,8 @@ export const registerBackgroundTimerTask = async () => {
     if (!isRegistered) {
       await BackgroundFetch.registerTaskAsync(BACKGROUND_TIMER_TASK, {
         minimumInterval: 60,
-        stopOnTerminate: false,
-        startOnBoot: true,
+        stopOnTerminate: true,
+        startOnBoot: false,
       });
       console.log("Background timer task registered successfully");
     } else {

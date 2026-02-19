@@ -9,10 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mycompany.nada",
-      "infoPlist": {
-        "UIBackgroundModes": ["fetch", "remote-notification"]
-      }
+      "bundleIdentifier": "com.mycompany.nada"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +18,14 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mycompany.nada",
-      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "WAKE_LOCK"]
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ],
+      "permissions": ["VIBRATE"]
     },
     "web": {
       "bundler": "metro",
