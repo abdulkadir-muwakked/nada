@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { NadaTheme } from "../constants/NadaTheme";
-import { User } from "../types/nada";
 import {
   getAuthMessageByMode,
   getBreakMessageByMode,
@@ -14,11 +13,13 @@ import SpeechBubble from "./SpeechBubble";
 /**
  * A demo component to showcase the difference between regular and premium "Hypocrite Mode" messages
  */
-const PremiumMessageDemo: React.FC = () => {
-  const [user, setUser] = useState<User>({ isPremium: false });
+const PremiumMessageDemo: React.FC<{ isPremium: boolean }> = ({
+  isPremium,
+}) => {
   const [messageType, setMessageType] = useState<
     "auth" | "start" | "break" | "resume"
   >("start");
+  const user = useMemo(() => ({ isPremium }), [isPremium]);
 
   const getMessage = () => {
     switch (messageType) {
@@ -39,13 +40,10 @@ const PremiumMessageDemo: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Nada Message Demo</Text>
-        <View style={styles.premiumToggle}>
-          <Text style={styles.label}>Premium Mode:</Text>
-          <Switch
-            value={user.isPremium}
-            onValueChange={(value) => setUser({ ...user, isPremium: value })}
-            trackColor={{ false: "#767577", true: NadaTheme.colors.primary }}
-          />
+        <View style={styles.statusPill}>
+          <Text style={styles.statusPillText}>
+            {isPremium ? "Premium Active" : "Free Tier"}
+          </Text>
         </View>
       </View>
 
@@ -99,13 +97,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: NadaTheme.colors.text,
   },
-  premiumToggle: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  label: {
-    marginRight: 8,
-    color: NadaTheme.colors.text,
+  statusPillText: {
+    color: NadaTheme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
   },
   characterContainer: {
     alignItems: "center",

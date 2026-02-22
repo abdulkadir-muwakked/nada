@@ -1,77 +1,78 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@clerk/clerk-expo";
 import NetInfo from "@react-native-community/netinfo";
-import {
-  TokenLimitError,
-  getNadaLine,
-  getTokenUsageSnapshot,
-  type TokenUsageSnapshot,
-} from "../lib/aiResponse";
 import type { NadaPersona } from "../context/TimerSettingsContext";
+import { ApiError, fetchNadaMessage } from "../lib/apiClient";
 
 interface UseNadaMessageOptions {
   sessionNumber: number;
   totalGoal: number;
   currentMode: "focus" | "break";
   persona: NadaPersona;
-  intensity?: 1 | 2 | 3;
   autoFetch?: boolean;
+  enabled?: boolean;
 }
 
 interface UseNadaMessageResult {
   message: string;
   loading: boolean;
-  error: "offline" | "limit" | "unknown" | null;
+  error: "offline" | "unauthorized" | "forbidden" | "unknown" | null;
   refresh: () => Promise<void>;
-  usage: TokenUsageSnapshot | null;
+  usage: number | null;
 }
 
-const limitFallback: Record<NadaPersona, string> = {
-  default: "Nada is taking a breather—token limit reached for today.",
-  mean: "You tapped the motivation keg dry. Come back tomorrow.",
-  sugarcoated: "I’d love to cheer more, but I’m all out of confetti today!",
-  clown: "Token bucket’s empty. Honk back later for more nonsense.",
+const unauthorizedFallback: Record<NadaPersona, string> = {
+  normal: "Sign in again so I can judge your progress properly.",
+  hypocrite: "Identity crisis detected. Sign in again, superstar.",
+};
+
+const premiumFallback: Record<NadaPersona, string> = {
+  normal: "Premium is required for AI coaching. Upgrade to continue.",
+  hypocrite: "Premium ticket required for Hypocrite mode.",
 };
 
 const offlineFallback: Record<NadaPersona, string> = {
-  default: "Offline mode: remember, progress beats perfection.",
-  mean: "No connection, huh? Guess we’re both slacking now.",
-  sugarcoated: "Offline hugs! Keep shining until we reconnect.",
-  clown: "No internet? Honk twice if you can still focus!",
+  normal: "Offline mode: remember, progress beats perfection.",
+  hypocrite: "No internet? Even your excuses are offline.",
 };
 
 const unknownFallback: Record<NadaPersona, string> = {
-  default: "Nada is speechless. Try again in a moment.",
-  mean: "Even I run out of insults. Give me another shot later.",
-  sugarcoated: "Glitch in the matrix! I’ll have sweeter words soon.",
-  clown: "Whoops! I tripped on my own punchline. Retry soon.",
+  normal: "Nada is speechless. Try again in a moment.",
+  hypocrite: "Even I run out of insults. Give me another shot later.",
 };
 
 export const useNadaMessage = (
   options: UseNadaMessageOptions
 ): UseNadaMessageResult => {
+  const { getToken } = useAuth();
   const {
     sessionNumber,
     totalGoal,
     currentMode,
     persona,
-    intensity = 2,
     autoFetch = true,
+    enabled = true,
   } = options;
 
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<"offline" | "limit" | "unknown" | null>(
-    null
-  );
-  const [usage, setUsage] = useState<TokenUsageSnapshot | null>(null);
+  const [error, setError] = useState<
+    "offline" | "unauthorized" | "forbidden" | "unknown" | null
+  >(null);
+  const [usage, setUsage] = useState<number | null>(null);
+  const inFlightRef = useRef(false);
+  const lastAutoFetchKeyRef = useRef<string>("");
+  const getTokenRef = useRef(getToken);
 
-  const fetchUsage = useCallback(async () => {
-    const snapshot = await getTokenUsageSnapshot();
-    setUsage(snapshot);
-    return snapshot;
-  }, []);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const refresh = useCallback(async () => {
+    if (!enabled) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
     setLoading(true);
     setError(null);
 
@@ -80,60 +81,90 @@ export const useNadaMessage = (
       if (!connection.isConnected) {
         setMessage(offlineFallback[persona]);
         setError("offline");
-        await fetchUsage();
         return;
       }
 
-      const line = await getNadaLine(
-        sessionNumber,
-        totalGoal,
-        currentMode,
-        persona,
-        intensity
-      );
-      setMessage(line);
-      setError(null);
-      await fetchUsage();
-    } catch (err) {
-      if (err instanceof TokenLimitError) {
-        setMessage(limitFallback[persona]);
-        setError("limit");
-        await fetchUsage();
+      const token = await getTokenRef.current();
+      if (!token) {
+        setMessage(unauthorizedFallback[persona]);
+        setError("unauthorized");
         return;
       }
-      console.error("Failed to fetch Nada message:", err);
+
+      const mode = persona;
+      const result = await fetchNadaMessage(
+        {
+          sessionNumber,
+          totalGoal,
+          isRest: currentMode === "break",
+          mode,
+        },
+        token
+      );
+
+      setMessage(result.text);
+      setUsage(result.usage);
+      setError(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 0) {
+          setMessage(offlineFallback[persona]);
+          setError("offline");
+          return;
+        }
+        if (err.status === 401) {
+          setMessage(unauthorizedFallback[persona]);
+          setError("unauthorized");
+          return;
+        }
+        if (err.status === 403) {
+          setMessage(premiumFallback[persona]);
+          setError("forbidden");
+          return;
+        }
+        if (
+          err.status === 500 &&
+          err.message.toLowerCase().includes("server auth is not configured")
+        ) {
+          setMessage(unauthorizedFallback[persona]);
+          setError("unauthorized");
+          return;
+        }
+      }
+
       setMessage(unknownFallback[persona]);
       setError("unknown");
-      await fetchUsage();
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [
     currentMode,
-    fetchUsage,
-    intensity,
+    enabled,
     persona,
     sessionNumber,
     totalGoal,
   ]);
 
   useEffect(() => {
-    let active = true;
-    if (autoFetch) {
-      refresh().catch((error) => {
-        if (active) {
-          console.error("Failed to auto-fetch Nada message:", error);
-        }
-      });
-    } else {
-      fetchUsage().catch((error) =>
-        console.error("Failed to load token usage snapshot:", error)
-      );
+    if (!autoFetch || !enabled) {
+      lastAutoFetchKeyRef.current = "";
+      return;
     }
-    return () => {
-      active = false;
-    };
-  }, [autoFetch, fetchUsage, refresh]);
+
+    const fetchKey = [
+      sessionNumber,
+      totalGoal,
+      currentMode,
+      persona,
+    ].join("|");
+
+    if (lastAutoFetchKeyRef.current === fetchKey) {
+      return;
+    }
+    lastAutoFetchKeyRef.current = fetchKey;
+    void refresh();
+  }, [autoFetch, currentMode, enabled, persona, refresh, sessionNumber, totalGoal]);
 
   const stableMessage = useMemo(() => message, [message]);
 

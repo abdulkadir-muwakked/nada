@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 
-export type NadaPersona = "default" | "mean" | "sugarcoated" | "clown";
+export type NadaPersona = "normal" | "hypocrite";
 
 export interface TimerSettings {
   focusSessionsPerCycle: number;
@@ -32,7 +32,7 @@ const defaultSettings: TimerSettings = {
   focusDurationMinutes: 25,
   shortBreakMinutes: 5,
   longBreakMinutes: 25,
-  persona: "default",
+  persona: "normal",
 };
 
 const TimerSettingsContext = createContext<TimerSettingsContextValue | null>(
@@ -50,7 +50,7 @@ const sanitizeNumber = (value: unknown, fallback: number, min = 1) => {
 const sanitizePersona = (value: unknown): NadaPersona => {
   if (typeof value === "string") {
     const lower = value.toLowerCase();
-    if (["default", "mean", "sugarcoated", "clown"].includes(lower)) {
+    if (["normal", "hypocrite"].includes(lower)) {
       return lower as NadaPersona;
     }
   }

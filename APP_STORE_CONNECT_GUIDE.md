@@ -8,7 +8,7 @@ Log in to [App Store Connect](https://appstoreconnect.apple.com/) and ensure you
 
 - **App Name:** Nada
 - **Primary Language:** English
-- **Bundle ID:** com.mycompany.myapp
+- **Bundle ID:** com.com.mouket.nada
 - **SKU:** NADA2025 (or your preferred unique identifier)
 - **User Access:** Ensure team members have appropriate access
 

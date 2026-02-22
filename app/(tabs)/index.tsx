@@ -20,6 +20,7 @@ import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useSession } from "../../hooks/useSession";
+import { useNadaMessage } from "../../hooks/useNadaMessage";
 import { useTheme } from "../../hooks/useTheme";
 import { useTimer } from "../../hooks/useTimer";
 import type { NadaThemeType } from "../../types/nada";
@@ -84,6 +85,14 @@ const NadaHomeContent = ({
     onFocusComplete: async ({ durationSeconds, completedAt }) => {
       await recordCompletedSession(durationSeconds, completedAt);
     },
+  });
+  const { message: aiMessage, loading: aiLoading } = useNadaMessage({
+    sessionNumber: Math.max(1, currentSession),
+    totalGoal: Math.max(1, configuredGoal),
+    currentMode: isRest ? "break" : "focus",
+    persona: settings.persona,
+    autoFetch: isSignedIn || false,
+    enabled: isSignedIn || false,
   });
   const { theme, colors, isDark } = useTheme();
   const themedStyles = useMemo(() => createStyles(theme), [theme]);
@@ -223,7 +232,9 @@ const NadaHomeContent = ({
         <SpeechBubble
           message={
             isSignedIn
-              ? currentMessage
+              ? aiLoading
+                ? currentMessage
+                : aiMessage || currentMessage
               : "Sign in if you must. I'll judge your productivity either way."
           }
         />

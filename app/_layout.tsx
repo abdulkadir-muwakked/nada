@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, AppState, AppStateStatus } from "react-native";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import SafeScreen from "../components/SafeScreen";
+import { RevenueCatProvider } from "../context/RevenueCatContext";
 import { TimerSettingsProvider } from "../context/TimerSettingsContext";
 import { useTheme } from "../hooks/useTheme";
 import { initializeAdMob } from "../utils/adService";
@@ -168,34 +169,36 @@ function Layout() {
           backgroundColor={colors.background}
           translucent={false}
         />
-        <TimerSettingsProvider>
-          <SafeScreen>
-            <Stack
-              screenOptions={{
-                headerTintColor: colors.text,
-                headerTitleStyle: {
-                  color: colors.text,
-                  fontWeight: "600",
-                },
-                headerStyle: {
-                  backgroundColor: colors.background,
-                },
-                headerShadowVisible: false,
-              }}
-            >
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="settings/index"
-                options={{
-                  title: "Settings",
-                  headerBackTitle: "Back",
+        <RevenueCatProvider>
+          <TimerSettingsProvider>
+            <SafeScreen>
+              <Stack
+                screenOptions={{
+                  headerTintColor: colors.text,
+                  headerTitleStyle: {
+                    color: colors.text,
+                    fontWeight: "600",
+                  },
+                  headerStyle: {
+                    backgroundColor: colors.background,
+                  },
+                  headerShadowVisible: false,
                 }}
-              />
-            </Stack>
-          </SafeScreen>
-        </TimerSettingsProvider>
+              >
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="settings/index"
+                  options={{
+                    title: "Settings",
+                    headerBackTitle: "Back",
+                  }}
+                />
+              </Stack>
+            </SafeScreen>
+          </TimerSettingsProvider>
+        </RevenueCatProvider>
       </ClerkProvider>
     </GlobalErrorBoundary>
   );

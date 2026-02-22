@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +18,7 @@ import type {
 } from "../../context/TimerSettingsContext";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useSession } from "../../hooks/useSession";
+import { ApiError, fetchSubscriptionStatus } from "../../lib/apiClient";
 import {
   DailySummary,
   HistoryRange,
@@ -25,6 +28,8 @@ import { useTheme } from "../../hooks/useTheme";
 import type { NadaThemeColors, NadaThemeType } from "../../types/nada";
 
 const SettingsScreen = () => {
+  const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
   const { colors, spacing } = useTheme();
   const { settings, updateSettings, loading } = useTimerSettings();
   const { refreshSessions } = useSession();
@@ -56,6 +61,8 @@ const SettingsScreen = () => {
   const [selectedPersona, setSelectedPersona] = useState<NadaPersona>(
     settings.persona
   );
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [isPremiumFromBackend, setIsPremiumFromBackend] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,6 +74,38 @@ const SettingsScreen = () => {
     });
     setSelectedPersona(settings.persona);
   }, [settings]);
+
+  const refreshSubscriptionStatus = useCallback(async (): Promise<boolean> => {
+    if (!isSignedIn) {
+      setIsPremiumFromBackend(false);
+      return false;
+    }
+
+    const token = await getToken();
+    if (!token) {
+      setIsPremiumFromBackend(false);
+      return false;
+    }
+
+    try {
+      const status = await fetchSubscriptionStatus(token);
+      setIsPremiumFromBackend(Boolean(status.isPremium));
+      return Boolean(status.isPremium);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        setIsPremiumFromBackend(false);
+        return false;
+      }
+      setIsPremiumFromBackend(false);
+      return false;
+    }
+  }, [getToken, isSignedIn]);
+
+  useEffect(() => {
+    refreshSubscriptionStatus().catch(() => {
+      setIsPremiumFromBackend(false);
+    });
+  }, [refreshSubscriptionStatus]);
 
   useEffect(() => {
     if (historyData.length === 0) {
@@ -107,19 +146,30 @@ const SettingsScreen = () => {
     []
   );
 
-  const toneOptions: { value: NadaPersona; label: string }[] = [
-    { value: "default", label: "Friendly" },
-    { value: "mean", label: "Mean" },
-    { value: "sugarcoated", label: "Sugarcoated" },
-    { value: "clown", label: "Clown" },
+  const toneOptions: {
+    value: NadaPersona;
+    label: string;
+    premiumOnly?: boolean;
+  }[] = [
+    { value: "normal", label: "Normal" },
+    { value: "hypocrite", label: "Hypocrite", premiumOnly: true },
   ];
 
   const handlePersonaChange = useCallback(
     async (value: NadaPersona) => {
+      if (value === "hypocrite") {
+        setSubscriptionLoading(true);
+        const hasAccess = await refreshSubscriptionStatus();
+        setSubscriptionLoading(false);
+        if (!hasAccess) {
+          router.push("/(tabs)/premium-messages");
+          return;
+        }
+      }
       setSelectedPersona(value);
       await updateSettings({ persona: value });
     },
-    [updateSettings]
+    [refreshSubscriptionStatus, router, updateSettings]
   );
 
   const handleRangeChange = useCallback(
@@ -318,17 +368,19 @@ const SettingsScreen = () => {
         ) : (
           <View style={styles.formContent}>
             <View style={styles.toneRow}>
-              <Text style={styles.fieldLabel}>Default tone</Text>
+              <Text style={styles.fieldLabel}>Tone mode</Text>
               <View style={styles.toneOptionsContainer}>
                 {toneOptions.map((option) => {
                   const isActive = option.value === selectedPersona;
+                  const showLock =
+                    Boolean(option.premiumOnly) && !isPremiumFromBackend;
                   return (
                     <TouchableOpacity
                       key={option.value}
                       style={[
                         styles.toneOption,
                         isActive && styles.toneOptionActive,
-                      ]}
+                        ]}
                       onPress={() => handlePersonaChange(option.value)}
                     >
                       <Text
@@ -338,11 +390,17 @@ const SettingsScreen = () => {
                         ]}
                       >
                         {option.label}
+                        {showLock ? " 🔒" : ""}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+              {subscriptionLoading ? (
+                <View style={styles.inlineLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : null}
             </View>
             {settingFields.map(({ key, label, description, suggestion }) => (
               <View key={key} style={styles.fieldCard}>
@@ -486,6 +544,10 @@ const createStyles = (
     },
     toneRow: {
       gap: spacing.sm,
+    },
+    inlineLoading: {
+      alignItems: "flex-start",
+      justifyContent: "center",
     },
     toneOptionsContainer: {
       flexDirection: "row",

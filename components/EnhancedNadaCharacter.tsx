@@ -1,12 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, View, ViewStyle } from "react-native";
-import Reanimated, {
-  Easing as ReanimatedEasing,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
 import { NadaTheme } from "../constants/NadaTheme";
 
 // Expression types that Nada can display
@@ -24,43 +17,28 @@ interface NadaCharacterProps {
 }
 
 /**
- * EnhancedNadaCharacter component with various expressions and animations
- * - neutral: Default unbothered face
- * - taskStart: Raised eyebrow + smirk
- * - focusOngoing: Neutral/unimpressed face
- * - breakTime: Slight eye roll
- * - taskComplete: Sarcastic smile/eyebrow drop
+ * EnhancedNadaCharacter component with various expressions and animations.
  */
 const EnhancedNadaCharacter: React.FC<NadaCharacterProps> = ({
   size = 1,
   expression = "neutral",
   style,
 }) => {
-  // RN Animated values for floating animation
   const floatAnim = useRef(new Animated.Value(0)).current;
-
-  // Reanimated shared values for facial expressions
-  const leftEyebrowHeight = useSharedValue(0);
-  const rightEyebrowHeight = useSharedValue(0);
-  const leftEyePosition = useSharedValue(0);
-  const rightEyePosition = useSharedValue(0);
-  const mouthCurve = useSharedValue(0); // 0 is neutral, positive is smile, negative is frown
-  const mouthWidth = useSharedValue(0); // 0 is normal, negative is thinner, positive is wider
-  const blinkOpacity = useSharedValue(1);
-
-  // Idle animation counter for random blinks
+  const leftEyebrowY = useRef(new Animated.Value(0)).current;
+  const rightEyebrowY = useRef(new Animated.Value(0)).current;
+  const leftEyeX = useRef(new Animated.Value(0)).current;
+  const rightEyeX = useRef(new Animated.Value(0)).current;
+  const blinkOpacity = useRef(new Animated.Value(1)).current;
   const idleCounter = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Character size calculations
   const characterSize = 100 * size;
   const eyeSize = 12 * size;
   const eyebrowSize = 16 * size;
   const eyebrowThickness = 2.5 * size;
   const mouthSize = 20 * size;
-  const mouthHeight = 10 * size;
   const eyeGap = 20 * size;
 
-  // Set up floating animation
   useEffect(() => {
     const floatingAnimation = Animated.loop(
       Animated.sequence([
@@ -80,155 +58,111 @@ const EnhancedNadaCharacter: React.FC<NadaCharacterProps> = ({
     );
 
     floatingAnimation.start();
-
-    return () => {
-      floatingAnimation.stop();
-    };
+    return () => floatingAnimation.stop();
   }, [floatAnim, size]);
 
-  // Set up random idle animations (blinking, tiny shifts)
   useEffect(() => {
     const triggerRandomAnimation = () => {
-      // Random blink animation
-      const randomBlink = () => {
-        blinkOpacity.value = withSequence(
-          withTiming(0, { duration: 100 }),
-          withTiming(1, { duration: 100 })
-        );
-      };
-
-      // Random tiny head movements via eyebrow/eye adjustments
-      const randomMicroMovement = () => {
-        const tiny = (Math.random() - 0.5) * 2;
-        leftEyePosition.value = withSequence(
-          withTiming(tiny, { duration: 300 }),
-          withTiming(0, { duration: 300 })
-        );
-        rightEyePosition.value = withSequence(
-          withTiming(tiny, { duration: 300 }),
-          withTiming(0, { duration: 300 })
-        );
-      };
-
-      // Randomly decide which idle animation to do
       const rand = Math.random();
       if (rand < 0.7) {
-        randomBlink();
+        Animated.sequence([
+          Animated.timing(blinkOpacity, {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(blinkOpacity, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]).start();
       } else {
-        randomMicroMovement();
+        const tiny = (Math.random() - 0.5) * 2;
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(leftEyeX, {
+              toValue: tiny,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(leftEyeX, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(rightEyeX, {
+              toValue: tiny,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(rightEyeX, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
       }
 
-      // Set next random animation time (between 2-8 seconds)
       const nextAnimTime = 2000 + Math.random() * 6000;
       idleCounter.current = setTimeout(triggerRandomAnimation, nextAnimTime);
     };
 
-    // Start the idle animation cycle
     idleCounter.current = setTimeout(triggerRandomAnimation, 3000);
 
     return () => {
-      if (idleCounter.current) {
-        clearTimeout(idleCounter.current);
-      }
+      if (idleCounter.current) clearTimeout(idleCounter.current);
     };
-  }, [blinkOpacity, leftEyePosition, rightEyePosition]);
+  }, [blinkOpacity, leftEyeX, rightEyeX]);
 
-  // Update facial expression based on the expression prop
   useEffect(() => {
-    const animationConfig = {
+    const config = {
       duration: 600,
-      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1),
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      useNativeDriver: true as const,
     };
 
+    let nextLeftEyebrow = 0;
+    let nextRightEyebrow = 0;
+    let nextLeftEye = 0;
+    let nextRightEye = 0;
+
+    if (expression === "taskStart") {
+      nextRightEyebrow = -4 * size;
+    } else if (expression === "breakTime") {
+      nextLeftEyebrow = 2 * size;
+      nextRightEyebrow = 2 * size;
+      nextLeftEye = -3 * size;
+      nextRightEye = -3 * size;
+    } else if (expression === "taskComplete") {
+      nextLeftEyebrow = 3 * size;
+      nextRightEyebrow = 3 * size;
+    }
+
+    Animated.parallel([
+      Animated.timing(leftEyebrowY, { toValue: nextLeftEyebrow, ...config }),
+      Animated.timing(rightEyebrowY, { toValue: nextRightEyebrow, ...config }),
+      Animated.timing(leftEyeX, { toValue: nextLeftEye, ...config }),
+      Animated.timing(rightEyeX, { toValue: nextRightEye, ...config }),
+    ]).start();
+  }, [expression, leftEyebrowY, rightEyebrowY, leftEyeX, rightEyeX, size]);
+
+  const mouthMetrics = useMemo(() => {
     switch (expression) {
       case "taskStart":
-        // Raised eyebrow + smirk
-        leftEyebrowHeight.value = withTiming(0, animationConfig);
-        rightEyebrowHeight.value = withTiming(-4 * size, animationConfig);
-        mouthCurve.value = withTiming(1 * size, animationConfig);
-        mouthWidth.value = withTiming(2 * size, animationConfig);
-        break;
-
-      case "focusOngoing":
-        // Neutral/unimpressed face
-        leftEyebrowHeight.value = withTiming(0, animationConfig);
-        rightEyebrowHeight.value = withTiming(0, animationConfig);
-        mouthCurve.value = withTiming(0, animationConfig);
-        mouthWidth.value = withTiming(0, animationConfig);
-        break;
-
+        return { width: mouthSize + 2 * size, height: 10 * size + 1 * size, curve: 1 * size };
       case "breakTime":
-        // Slight eye roll
-        leftEyePosition.value = withTiming(-3 * size, animationConfig);
-        rightEyePosition.value = withTiming(-3 * size, animationConfig);
-        leftEyebrowHeight.value = withTiming(2 * size, animationConfig);
-        rightEyebrowHeight.value = withTiming(2 * size, animationConfig);
-        mouthCurve.value = withTiming(-1 * size, animationConfig);
-        mouthWidth.value = withTiming(-1 * size, animationConfig);
-        break;
-
+        return { width: mouthSize - 1 * size, height: 10 * size - 1 * size, curve: -1 * size };
       case "taskComplete":
-        // Sarcastic smile or eyebrow drop
-        leftEyebrowHeight.value = withTiming(3 * size, animationConfig);
-        rightEyebrowHeight.value = withTiming(3 * size, animationConfig);
-        mouthCurve.value = withTiming(3 * size, animationConfig);
-        mouthWidth.value = withTiming(4 * size, animationConfig);
-        break;
-
-      case "neutral":
+        return { width: mouthSize + 4 * size, height: 10 * size + 3 * size, curve: 3 * size };
       default:
-        // Reset to neutral expression
-        leftEyebrowHeight.value = withTiming(0, animationConfig);
-        rightEyebrowHeight.value = withTiming(0, animationConfig);
-        leftEyePosition.value = withTiming(0, animationConfig);
-        rightEyePosition.value = withTiming(0, animationConfig);
-        mouthCurve.value = withTiming(0, animationConfig);
-        mouthWidth.value = withTiming(0, animationConfig);
-        break;
+        return { width: mouthSize, height: 10 * size, curve: 0 };
     }
-  }, [
-    expression,
-    leftEyebrowHeight,
-    rightEyebrowHeight,
-    leftEyePosition,
-    rightEyePosition,
-    mouthCurve,
-    mouthWidth,
-    size,
-  ]);
+  }, [expression, mouthSize, size]);
 
-  // Create animated styles for facial features
-  const leftEyebrowStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: leftEyebrowHeight.value }],
-  }));
-
-  const rightEyebrowStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: rightEyebrowHeight.value }],
-  }));
-
-  const leftEyeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: leftEyePosition.value }],
-    opacity: blinkOpacity.value,
-  }));
-
-  const rightEyeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: rightEyePosition.value }],
-    opacity: blinkOpacity.value,
-  }));
-
-  const mouthStyle = useAnimatedStyle(() => {
-    // Dynamic mouth shape based on mouthCurve value
-    return {
-      width: mouthSize + mouthWidth.value,
-      height: mouthHeight + mouthCurve.value,
-      borderRadius:
-        mouthCurve.value < 0
-          ? (10 + Math.abs(mouthCurve.value) * 2) * size
-          : (20 - mouthCurve.value * 2) * size,
-    };
-  });
-
-  // Character face and container styles
   const characterFaceStyle: ViewStyle = {
     width: characterSize,
     height: characterSize,
@@ -269,16 +203,24 @@ const EnhancedNadaCharacter: React.FC<NadaCharacterProps> = ({
     left: (eyeSize - eyebrowSize) / 2,
   };
 
-  const baseMouthStyle: ViewStyle = {
+  const mouthStyle: ViewStyle = {
     position: "absolute",
     bottom: 30 * size,
     left: "50%",
-    marginLeft: -mouthSize / 2,
+    marginLeft: -mouthMetrics.width / 2,
+    width: mouthMetrics.width,
+    height: mouthMetrics.height,
     borderWidth: 2 * size,
     borderColor: NadaTheme.colors.background,
     borderTopWidth: 0,
-    borderBottomLeftRadius: 20 * size,
-    borderBottomRightRadius: 20 * size,
+    borderBottomLeftRadius:
+      mouthMetrics.curve < 0
+        ? (10 + Math.abs(mouthMetrics.curve) * 2) * size
+        : (20 - mouthMetrics.curve * 2) * size,
+    borderBottomRightRadius:
+      mouthMetrics.curve < 0
+        ? (10 + Math.abs(mouthMetrics.curve) * 2) * size
+        : (20 - mouthMetrics.curve * 2) * size,
   };
 
   return (
@@ -293,21 +235,22 @@ const EnhancedNadaCharacter: React.FC<NadaCharacterProps> = ({
     >
       <View style={characterFaceStyle}>
         <View style={eyesContainerStyle}>
-          {/* Left eye with eyebrow */}
           <View style={{ position: "relative" }}>
-            <Reanimated.View style={[baseEyeStyle, leftEyeStyle]} />
-            <Reanimated.View style={[eyebrowStyle, leftEyebrowStyle]} />
+            <Animated.View
+              style={[baseEyeStyle, { transform: [{ translateX: leftEyeX }], opacity: blinkOpacity }]}
+            />
+            <Animated.View style={[eyebrowStyle, { transform: [{ translateY: leftEyebrowY }] }]} />
           </View>
 
-          {/* Right eye with eyebrow */}
           <View style={{ position: "relative" }}>
-            <Reanimated.View style={[baseEyeStyle, rightEyeStyle]} />
-            <Reanimated.View style={[eyebrowStyle, rightEyebrowStyle]} />
+            <Animated.View
+              style={[baseEyeStyle, { transform: [{ translateX: rightEyeX }], opacity: blinkOpacity }]}
+            />
+            <Animated.View style={[eyebrowStyle, { transform: [{ translateY: rightEyebrowY }] }]} />
           </View>
         </View>
 
-        {/* Mouth that changes shape based on expression */}
-        <Reanimated.View style={[baseMouthStyle, mouthStyle]} />
+        <View style={mouthStyle} />
       </View>
     </Animated.View>
   );

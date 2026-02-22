@@ -1,4 +1,4 @@
-package com.mycompany.nada
+package com.mouket.nada
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
