@@ -1,11 +1,13 @@
 import { useAuth } from "@clerk/clerk-expo";
 import Constants from "expo-constants";
+import * as Device from "expo-device";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Platform } from "react-native";
@@ -43,6 +45,7 @@ const ANDROID_REVENUECAT_KEY =
 // Entitlement identifier created in RevenueCat dashboard, e.g. "premium".
 const ENTITLEMENT_ID =
   process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID ?? "premium";
+let purchasesConfigured = false;
 
 const isPlaceholderRevenueCatKey = (value: string): boolean => {
   const normalized = value.trim().toLowerCase();
@@ -103,6 +106,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { isSignedIn, userId } = useAuth();
+  const previousSignedInRef = useRef<boolean>(false);
   const [isConfigured, setIsConfigured] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -120,6 +124,16 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const refreshOfferings = useCallback(async () => {
+    if (Platform.OS === "ios" && !Device.isDevice) {
+      setOffering(null);
+      setMonthlyPackage(null);
+      setYearlyPackage(null);
+      setError(
+        "Subscriptions are unavailable on iOS simulator without StoreKit testing. Use a real device with Sandbox account, or add a StoreKit config file."
+      );
+      return;
+    }
+
     try {
       const offerings = await Purchases.getOfferings();
       // Offerings are fetched from RevenueCat dashboard products/packages.
@@ -189,7 +203,10 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
         Purchases.setLogLevel(
           __DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.ERROR
         );
-        await Purchases.configure({ apiKey });
+        if (!purchasesConfigured) {
+          await Purchases.configure({ apiKey });
+          purchasesConfigured = true;
+        }
 
         if (!mounted) return;
         setIsConfigured(true);
@@ -237,8 +254,10 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         if (isSignedIn && userId) {
           await Purchases.logIn(userId);
-        } else {
+          previousSignedInRef.current = true;
+        } else if (previousSignedInRef.current) {
           await Purchases.logOut();
+          previousSignedInRef.current = false;
         }
         await refreshCustomerInfo();
       } catch (identityError) {
