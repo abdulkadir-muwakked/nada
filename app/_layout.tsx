@@ -23,6 +23,7 @@ import { initializeOAuth } from "../utils/oauth";
 
 // Initialize OAuth for Google sign-in
 initializeOAuth();
+const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 // Root Layout component
 function Layout() {
@@ -35,6 +36,14 @@ function Layout() {
 
   // Reference to app state
   const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    if (__DEV__ && !clerkPublishableKey) {
+      console.warn(
+        "[Clerk] Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Set it via EAS env before building."
+      );
+    }
+  }, []);
 
   // Initialize services when the app starts
   useEffect(() => {
@@ -163,43 +172,56 @@ function Layout() {
 
   return (
     <GlobalErrorBoundary>
-      <ClerkProvider tokenCache={tokenCache}>
-        <StatusBar
-          style={isDark ? "light" : "dark"}
-          backgroundColor={colors.background}
-          translucent={false}
-        />
-        <RevenueCatProvider>
-          <TimerSettingsProvider>
-            <SafeScreen>
-              <Stack
-                screenOptions={{
-                  headerTintColor: colors.text,
-                  headerTitleStyle: {
-                    color: colors.text,
-                    fontWeight: "600",
-                  },
-                  headerStyle: {
-                    backgroundColor: colors.background,
-                  },
-                  headerShadowVisible: false,
-                }}
-              >
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="settings/index"
-                  options={{
-                    title: "Settings",
-                    headerBackTitle: "Back",
+      {clerkPublishableKey ? (
+        <ClerkProvider
+          tokenCache={tokenCache}
+          publishableKey={clerkPublishableKey}
+        >
+          <StatusBar
+            style={isDark ? "light" : "dark"}
+            backgroundColor={colors.background}
+            translucent={false}
+          />
+          <RevenueCatProvider>
+            <TimerSettingsProvider>
+              <SafeScreen>
+                <Stack
+                  screenOptions={{
+                    headerTintColor: colors.text,
+                    headerTitleStyle: {
+                      color: colors.text,
+                      fontWeight: "600",
+                    },
+                    headerStyle: {
+                      backgroundColor: colors.background,
+                    },
+                    headerShadowVisible: false,
                   }}
-                />
-              </Stack>
-            </SafeScreen>
-          </TimerSettingsProvider>
-        </RevenueCatProvider>
-      </ClerkProvider>
+                >
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="settings/index"
+                    options={{
+                      title: "Settings",
+                      headerBackTitle: "Back",
+                    }}
+                  />
+                </Stack>
+              </SafeScreen>
+            </TimerSettingsProvider>
+          </RevenueCatProvider>
+        </ClerkProvider>
+      ) : (
+        <SafeScreen>
+          <StatusBar
+            style={isDark ? "light" : "dark"}
+            backgroundColor={colors.background}
+            translucent={false}
+          />
+        </SafeScreen>
+      )}
     </GlobalErrorBoundary>
   );
 }

@@ -1,25 +1,4 @@
-import Constants from "expo-constants";
-
-const resolveApiBaseUrl = (): string => {
-  const configured = process.env.EXPO_PUBLIC_API_BASE_URL;
-  if (configured && configured.trim().length > 0) {
-    return configured.trim();
-  }
-
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (!hostUri) {
-    return "http://localhost:3000";
-  }
-
-  const host = hostUri.split(":")[0];
-  if (!host) {
-    return "http://localhost:3000";
-  }
-
-  return `http://${host}:3000`;
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
+const API_BASE_URL = "https://nada-backend-gray.vercel.app";
 
 export interface ApiErrorDetails {
   status: number;
