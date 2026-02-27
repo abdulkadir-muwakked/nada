@@ -548,34 +548,6 @@ export const useTimer = ({
     breakDuration,
     notificationId,
   ]);
-  // Initialize timer when mode changes but not running
-  useEffect(() => {
-    // Only update when not running
-    if (!isRunning) {
-      const currentDuration = isRest ? breakDuration : focusDuration;
-
-      // Use a controlled way to update the timer seconds
-      if (timerSeconds !== currentDuration) {
-        console.log(
-          `Initializing timer to ${isRest ? "break" : "focus"} duration:`,
-          currentDuration
-        );
-        setTimerSeconds(currentDuration);
-        latestTimerSecondsRef.current = currentDuration;
-        completionTriggeredRef.current = false;
-
-        // Also update the timer state ref to maintain consistency
-        if (timerStateRef.current) {
-          timerStateRef.current = {
-            ...timerStateRef.current,
-            timerSeconds: currentDuration,
-            lastActiveTime: Date.now(),
-          };
-        }
-      }
-    }
-  }, [isRest, isRunning, breakDuration, focusDuration, timerSeconds]);
-
   // Cleanup when component unmounts
   useEffect(() => {
     return () => {

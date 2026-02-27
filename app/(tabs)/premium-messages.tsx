@@ -10,9 +10,14 @@ export default function PremiumMessagesScreen() {
 
   return (
     <SafeScreen style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          !isPremium && styles.paywallOnlyContent,
+        ]}
+      >
         <PremiumPaywall />
-        <PremiumMessageDemo isPremium={isPremium} />
+        {isPremium ? <PremiumMessageDemo isPremium={isPremium} /> : null}
       </ScrollView>
     </SafeScreen>
   );
@@ -23,7 +28,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    flexGrow: 1,
     gap: 16,
+  },
+  paywallOnlyContent: {
+    padding: 0,
   },
 });

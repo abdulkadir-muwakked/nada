@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/clerk-expo";
 import NetInfo from "@react-native-community/netinfo";
 import type { NadaPersona } from "../context/TimerSettingsContext";
+import { getBreakMessage, getSessionStartMessage } from "../constants/AuthMessages";
+import {
+  getHypocriteBreakMessage,
+  getHypocriteStartMessage,
+} from "../constants/HypocriteMessages";
 import { ApiError, fetchNadaMessage } from "../lib/apiClient";
 
 interface UseNadaMessageOptions {
@@ -21,24 +26,23 @@ interface UseNadaMessageResult {
   usage: number | null;
 }
 
-const unauthorizedFallback: Record<NadaPersona, string> = {
-  normal: "Sign in again so I can judge your progress properly.",
-  hypocrite: "Identity crisis detected. Sign in again, superstar.",
-};
+const getCachedFallbackMessage = (
+  persona: NadaPersona,
+  currentMode: "focus" | "break",
+  allowHypocrite = true
+): string => {
+  const effectivePersona: NadaPersona =
+    !allowHypocrite && persona === "hypocrite" ? "normal" : persona;
 
-const premiumFallback: Record<NadaPersona, string> = {
-  normal: "Premium is required for AI coaching. Upgrade to continue.",
-  hypocrite: "Premium ticket required for Hypocrite mode.",
-};
+  if (currentMode === "break") {
+    return effectivePersona === "hypocrite"
+      ? getHypocriteBreakMessage()
+      : getBreakMessage();
+  }
 
-const offlineFallback: Record<NadaPersona, string> = {
-  normal: "Offline mode: remember, progress beats perfection.",
-  hypocrite: "No internet? Even your excuses are offline.",
-};
-
-const unknownFallback: Record<NadaPersona, string> = {
-  normal: "Nada is speechless. Try again in a moment.",
-  hypocrite: "Even I run out of insults. Give me another shot later.",
+  return effectivePersona === "hypocrite"
+    ? getHypocriteStartMessage()
+    : getSessionStartMessage();
 };
 
 export const useNadaMessage = (
@@ -79,14 +83,14 @@ export const useNadaMessage = (
     try {
       const connection = await NetInfo.fetch();
       if (!connection.isConnected) {
-        setMessage(offlineFallback[persona]);
+        setMessage(getCachedFallbackMessage(persona, currentMode));
         setError("offline");
         return;
       }
 
       const token = await getTokenRef.current();
       if (!token) {
-        setMessage(unauthorizedFallback[persona]);
+        setMessage(getCachedFallbackMessage(persona, currentMode));
         setError("unauthorized");
         return;
       }
@@ -108,17 +112,18 @@ export const useNadaMessage = (
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 0) {
-          setMessage(offlineFallback[persona]);
+          setMessage(getCachedFallbackMessage(persona, currentMode));
           setError("offline");
           return;
         }
         if (err.status === 401) {
-          setMessage(unauthorizedFallback[persona]);
+          setMessage(getCachedFallbackMessage(persona, currentMode));
           setError("unauthorized");
           return;
         }
         if (err.status === 403) {
-          setMessage(premiumFallback[persona]);
+          // If premium is missing, keep the app tone active with local normal-mode messages.
+          setMessage(getCachedFallbackMessage(persona, currentMode, false));
           setError("forbidden");
           return;
         }
@@ -126,13 +131,13 @@ export const useNadaMessage = (
           err.status === 500 &&
           err.message.toLowerCase().includes("server auth is not configured")
         ) {
-          setMessage(unauthorizedFallback[persona]);
+          setMessage(getCachedFallbackMessage(persona, currentMode));
           setError("unauthorized");
           return;
         }
       }
 
-      setMessage(unknownFallback[persona]);
+      setMessage(getCachedFallbackMessage(persona, currentMode));
       setError("unknown");
     } finally {
       inFlightRef.current = false;

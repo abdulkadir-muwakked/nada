@@ -84,10 +84,15 @@ export const startTimer = async (
   }
 
   const now = Date.now();
+  // Keep provided startTime on resume so elapsed offset is preserved.
+  const resumedStartTime =
+    timerState.startTime && timerState.timerSeconds > 0
+      ? timerState.startTime
+      : now;
   const updatedState: TimerState = {
     ...timerState,
     isRunning: true,
-    startTime: now,
+    startTime: resumedStartTime,
     lastActiveTime: now,
   };
 
