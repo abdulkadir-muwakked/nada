@@ -17,6 +17,7 @@ import Purchases, {
   PurchasesOffering,
   PurchasesPackage,
 } from "react-native-purchases";
+import RevenueCatUI from "react-native-purchases-ui";
 
 interface RevenueCatContextValue {
   isConfigured: boolean;
@@ -30,6 +31,7 @@ interface RevenueCatContextValue {
   purchaseMonthly: () => Promise<boolean>;
   purchaseYearly: () => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
+  presentDashboardPaywall: () => Promise<boolean>;
 }
 
 const RevenueCatContext = createContext<RevenueCatContextValue | undefined>(
@@ -118,6 +120,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
   const [yearlyPackage, setYearlyPackage] = useState<PurchasesPackage | null>(
     null
   );
+  const paywallPresentingRef = useRef(false);
 
   const syncEntitlement = useCallback((customerInfo: CustomerInfo) => {
     setIsPremium(resolvePremiumFromCustomerInfo(customerInfo));
@@ -135,7 +138,21 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     try {
+      if (__DEV__) {
+        console.log("Bundle ID:", Constants.expoConfig?.ios?.bundleIdentifier);
+        console.log("RC configured:", !!Purchases);
+      }
+
       const offerings = await Purchases.getOfferings();
+      if (__DEV__) {
+        console.log("Current offering:", offerings.current?.identifier);
+        console.log(
+          "Packages:",
+          offerings.current?.availablePackages?.map(
+            (p) => p.product.identifier
+          )
+        );
+      }
       // Offerings are fetched from RevenueCat dashboard products/packages.
       const currentOffering = offerings.current ?? null;
       setOffering(currentOffering);
@@ -332,6 +349,46 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [syncEntitlement]);
 
+  const presentDashboardPaywall = useCallback(async (): Promise<boolean> => {
+    if (!isConfigured) {
+      setError("Subscriptions are not configured yet.");
+      return false;
+    }
+
+    if (paywallPresentingRef.current) {
+      return false;
+    }
+
+    if (isPremium) {
+      return true;
+    }
+
+    paywallPresentingRef.current = true;
+    setLoading(true);
+
+    try {
+      await RevenueCatUI.presentPaywallIfNeeded({
+        requiredEntitlementIdentifier: ENTITLEMENT_ID,
+      });
+
+      const customerInfo = await Purchases.getCustomerInfo();
+      const hasPremium = resolvePremiumFromCustomerInfo(customerInfo);
+      syncEntitlement(customerInfo);
+      setError(null);
+      return hasPremium;
+    } catch (paywallError) {
+      setError(
+        paywallError instanceof Error
+          ? paywallError.message
+          : "Failed to present subscription paywall."
+      );
+      return false;
+    } finally {
+      paywallPresentingRef.current = false;
+      setLoading(false);
+    }
+  }, [isConfigured, isPremium, syncEntitlement]);
+
   const value = useMemo<RevenueCatContextValue>(
     () => ({
       isConfigured,
@@ -345,6 +402,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
       purchaseMonthly,
       purchaseYearly,
       restorePurchases,
+      presentDashboardPaywall,
     }),
     [
       error,
@@ -355,6 +413,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({
       offering,
       purchaseMonthly,
       purchaseYearly,
+      presentDashboardPaywall,
       refreshOfferings,
       restorePurchases,
       yearlyPackage,

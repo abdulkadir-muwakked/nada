@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AppleSignInButton from "../../components/AppleSignInButton";
 import AuthDivider from "../../components/AuthDivider";
 import { authStyles } from "../../components/AuthStyles";
 import ErrorMessage from "../../components/ErrorMessage";
@@ -24,18 +25,20 @@ import {
   getValidationErrorMessage,
 } from "../../constants/AuthMessages";
 import { NadaTheme } from "../../constants/NadaTheme";
-import { useGoogleAuth } from "../../utils/oauth";
+import { useAppleAuth, useGoogleAuth } from "../../utils/oauth";
 import { validateEmail } from "../../utils/validation";
 
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
   const { handleGoogleSignIn } = useGoogleAuth();
+  const { handleAppleSignIn } = useAppleAuth();
 
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [googleLoading, setGoogleLoading] = React.useState(false);
+  const [appleLoading, setAppleLoading] = React.useState(false);
   const [nadaMessage, setNadaMessage] = React.useState(getRandomAuthMessage());
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<{
@@ -45,6 +48,8 @@ export default function Page() {
 
   // Handle Google sign-in
   const onGoogleSignInPress = async () => {
+    if (googleLoading || appleLoading) return;
+
     // Show a snarky Google-specific message
     setNadaMessage(getRandomGoogleAuthMessage());
     setErrorMessage(null); // Clear any previous errors
@@ -69,6 +74,30 @@ export default function Page() {
       );
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const onAppleSignInPress = async () => {
+    if (googleLoading || appleLoading) return;
+
+    setNadaMessage("Sign in with Apple? Bold. Let's see if it works.");
+    setErrorMessage(null);
+
+    setAppleLoading(true);
+    try {
+      const success = await handleAppleSignIn();
+      if (success) {
+        router.replace("/");
+      } else {
+        setErrorMessage("Apple sign-in did not complete. Try again.");
+        setNadaMessage("Apple bailed. Or maybe you did.");
+      }
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2));
+      setErrorMessage("Failed to connect with Apple.");
+      setNadaMessage("Apple sign-in failed. Impressive consistency.");
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -257,10 +286,16 @@ export default function Page() {
             <SpeechBubble message={nadaMessage} />
           </View>
 
+          <AppleSignInButton
+            onPress={onAppleSignInPress}
+            loading={appleLoading || googleLoading}
+            style={{ marginBottom: 5 }}
+          />
+
           {/* Google Sign In Button */}
           <GoogleSignInButton
             onPress={onGoogleSignInPress}
-            loading={googleLoading}
+            loading={googleLoading || appleLoading}
             style={{ marginBottom: 5 }}
           />
 

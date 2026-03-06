@@ -18,6 +18,7 @@ import SpeechBubble from "../../components/SpeechBubble";
 import Controls from "../../components/timer/Controls";
 import SessionInfo from "../../components/timer/SessionInfo";
 import TimerDisplay from "../../components/timer/TimerDisplay";
+import { useRevenueCat } from "../../context/RevenueCatContext";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useSession } from "../../hooks/useSession";
 import { useNadaMessage } from "../../hooks/useNadaMessage";
@@ -64,6 +65,8 @@ const NadaHomeContent = ({
   const { currentSession, sessionGoal, streak, recordCompletedSession } =
     useSession();
   const { settings } = useTimerSettings();
+  const { isPremium, loading: revenueCatLoading, presentDashboardPaywall } =
+    useRevenueCat();
 
   const configuredGoal = useMemo(
     () => Math.max(1, Math.round(settings.focusSessionsPerCycle)),
@@ -145,6 +148,19 @@ const NadaHomeContent = ({
   // Handle navigation to auth screens
   const handleAuthPress = (screen: "sign-in" | "sign-up") => {
     router.push(`/${screen}`);
+  };
+
+  const handlePremiumPress = async () => {
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
+
+    if (revenueCatLoading || isPremium) {
+      return;
+    }
+
+    await presentDashboardPaywall();
   };
 
   return (
@@ -262,6 +278,34 @@ const NadaHomeContent = ({
           onToggleMode={handleToggleMode}
           onSkip={handleSkip}
         />
+
+        {!isPremium ? (
+          <TouchableOpacity
+            style={[
+              themedStyles.premiumCta,
+              revenueCatLoading && themedStyles.premiumCtaDisabled,
+            ]}
+            onPress={handlePremiumPress}
+            disabled={revenueCatLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Unlock Hypocrite Mode"
+          >
+            <Text style={themedStyles.premiumCtaTitle}>
+              Unlock Hypocrite Mode
+            </Text>
+            <Text style={themedStyles.premiumCtaSubtitle}>
+              Get premium sarcasm
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {isSignedIn && isPremium ? (
+          <View style={themedStyles.premiumBadge}>
+            <Text style={themedStyles.premiumBadgeText}>
+              Premium sarcasm unlocked
+            </Text>
+          </View>
+        ) : null}
 
         {/* <TouchableOpacity
           style={themedStyles.motivateBtn}
@@ -423,6 +467,52 @@ const createStyles = (theme: NadaThemeType) =>
 
     motivateText: {
       fontSize: 16,
+      fontWeight: "600",
+      color: theme.colors.text,
+    },
+
+    premiumCta: {
+      width: 300,
+      marginTop: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 18,
+      borderRadius: 20,
+      backgroundColor: theme.colors.highlight,
+      borderWidth: 1,
+      borderColor: theme.colors.highlightBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    premiumCtaDisabled: {
+      opacity: 0.7,
+    },
+
+    premiumCtaTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.primary,
+    },
+
+    premiumCtaSubtitle: {
+      marginTop: 2,
+      fontSize: 13,
+      fontWeight: "500",
+      color: theme.colors.textSecondary,
+    },
+
+    premiumBadge: {
+      marginTop: 14,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.overlayBorder,
+      backgroundColor: theme.colors.overlay,
+    },
+
+    premiumBadgeText: {
+      fontSize: 13,
       fontWeight: "600",
       color: theme.colors.text,
     },

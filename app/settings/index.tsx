@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useAuth } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -16,9 +14,9 @@ import type {
   NadaPersona,
   TimerSettings,
 } from "../../context/TimerSettingsContext";
+import { useRevenueCat } from "../../context/RevenueCatContext";
 import { useTimerSettings } from "../../context/TimerSettingsContext";
 import { useSession } from "../../hooks/useSession";
-import { ApiError, fetchSubscriptionStatus } from "../../lib/apiClient";
 import {
   DailySummary,
   HistoryRange,
@@ -28,10 +26,10 @@ import { useTheme } from "../../hooks/useTheme";
 import type { NadaThemeColors, NadaThemeType } from "../../types/nada";
 
 const SettingsScreen = () => {
-  const router = useRouter();
-  const { getToken, isSignedIn } = useAuth();
   const { colors, spacing } = useTheme();
   const { settings, updateSettings, loading } = useTimerSettings();
+  const { isPremium, loading: revenueCatLoading, presentDashboardPaywall } =
+    useRevenueCat();
   const { refreshSessions } = useSession();
   const {
     range,
@@ -62,7 +60,6 @@ const SettingsScreen = () => {
     settings.persona
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
-  const [isPremiumFromBackend, setIsPremiumFromBackend] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,38 +71,6 @@ const SettingsScreen = () => {
     });
     setSelectedPersona(settings.persona);
   }, [settings]);
-
-  const refreshSubscriptionStatus = useCallback(async (): Promise<boolean> => {
-    if (!isSignedIn) {
-      setIsPremiumFromBackend(false);
-      return false;
-    }
-
-    const token = await getToken();
-    if (!token) {
-      setIsPremiumFromBackend(false);
-      return false;
-    }
-
-    try {
-      const status = await fetchSubscriptionStatus(token);
-      setIsPremiumFromBackend(Boolean(status.isPremium));
-      return Boolean(status.isPremium);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        setIsPremiumFromBackend(false);
-        return false;
-      }
-      setIsPremiumFromBackend(false);
-      return false;
-    }
-  }, [getToken, isSignedIn]);
-
-  useEffect(() => {
-    refreshSubscriptionStatus().catch(() => {
-      setIsPremiumFromBackend(false);
-    });
-  }, [refreshSubscriptionStatus]);
 
   useEffect(() => {
     if (historyData.length === 0) {
@@ -158,18 +123,31 @@ const SettingsScreen = () => {
   const handlePersonaChange = useCallback(
     async (value: NadaPersona) => {
       if (value === "hypocrite") {
+        if (isPremium) {
+          setSelectedPersona(value);
+          await updateSettings({ persona: value });
+          return;
+        }
+
+        if (subscriptionLoading || revenueCatLoading) return;
+
         setSubscriptionLoading(true);
-        const hasAccess = await refreshSubscriptionStatus();
+        const hasAccess = await presentDashboardPaywall();
         setSubscriptionLoading(false);
         if (!hasAccess) {
-          router.push("/(tabs)/premium-messages");
           return;
         }
       }
       setSelectedPersona(value);
       await updateSettings({ persona: value });
     },
-    [refreshSubscriptionStatus, router, updateSettings]
+    [
+      isPremium,
+      presentDashboardPaywall,
+      revenueCatLoading,
+      subscriptionLoading,
+      updateSettings,
+    ]
   );
 
   const handleRangeChange = useCallback(
@@ -373,7 +351,7 @@ const SettingsScreen = () => {
                 {toneOptions.map((option) => {
                   const isActive = option.value === selectedPersona;
                   const showLock =
-                    Boolean(option.premiumOnly) && !isPremiumFromBackend;
+                    Boolean(option.premiumOnly) && !isPremium;
                   return (
                     <TouchableOpacity
                       key={option.value}
