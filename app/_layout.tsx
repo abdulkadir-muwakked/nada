@@ -5,9 +5,13 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { Alert, AppState, AppStateStatus } from "react-native";
+import Purchases from "react-native-purchases";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import SafeScreen from "../components/SafeScreen";
-import { RevenueCatProvider } from "../context/RevenueCatContext";
+import {
+  RevenueCatProvider,
+  useRevenueCat,
+} from "../context/RevenueCatContext";
 import { TimerSettingsProvider } from "../context/TimerSettingsContext";
 import { useTheme } from "../hooks/useTheme";
 import { initializeAdMob } from "../utils/adService";
@@ -24,6 +28,30 @@ import { initializeOAuth } from "../utils/oauth";
 // Initialize OAuth for Google sign-in
 initializeOAuth();
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+function ProductInfoLogger() {
+  const { offering } = useRevenueCat();
+
+  useEffect(() => {
+    async function logCustomerAndProductInfo() {
+      try {
+        const customerInfo = await Purchases.getCustomerInfo();
+        console.log("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh");
+
+        console.log("📢 customerInfo", JSON.stringify(customerInfo, null, 2));
+        if (offering) {
+          console.log("📢 productInfo", JSON.stringify(offering, null, 2));
+        } else {
+          console.log("No product info available yet.");
+        }
+      } catch (err) {
+        console.error("Error logging customer/product info", err);
+      }
+    }
+    logCustomerAndProductInfo();
+  }, [offering]); // Correct dependency
+  return null;
+}
 
 // Root Layout component
 function Layout() {
@@ -185,6 +213,7 @@ function Layout() {
           <RevenueCatProvider>
             <TimerSettingsProvider>
               <SafeScreen>
+                <ProductInfoLogger />
                 <Stack
                   screenOptions={{
                     headerTintColor: colors.text,
@@ -199,8 +228,14 @@ function Layout() {
                   }}
                 >
                   <Stack.Screen name="index" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="(auth)"
+                    options={{ headerShown: false }}
+                  />
                   <Stack.Screen
                     name="settings/index"
                     options={{

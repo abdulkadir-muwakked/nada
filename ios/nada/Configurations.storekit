@@ -1,0 +1,63 @@
+{
+  "identifier" : "B6C2E6D1-5A3F-4F8B-9B16-3F208E65D1A1",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "E2A4B7F2-4A0F-42D3-98B4-40B8A7D5C101",
+      "localizations" : [
+        {
+          "description" : "Unlock Hypocrite Mode with a monthly subscription.",
+          "displayName" : "Nada Premium Monthly",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nada.premium.monthly",
+      "recurringSubscriptionPeriod" : "P1M",
+      "referenceName" : "Nada Premium Monthly",
+      "subscriptionGroupID" : "1F1BCB7F-8358-4F7D-9A01-6D79A6E8E001",
+      "type" : "RecurringSubscription"
+    },
+    {
+      "displayPrice" : "39.99",
+      "familyShareable" : false,
+      "internalID" : "8D95B460-C3D6-40D1-A2C0-1E2026E0B202",
+      "localizations" : [
+        {
+          "description" : "Unlock Hypocrite Mode with a yearly subscription.",
+          "displayName" : "Nada Premium Yearly",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nada.premium.yearly",
+      "recurringSubscriptionPeriod" : "P1Y",
+      "referenceName" : "Nada Premium Yearly",
+      "subscriptionGroupID" : "1F1BCB7F-8358-4F7D-9A01-6D79A6E8E001",
+      "type" : "RecurringSubscription"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "A94E3E18-BA7A-4182-95F7-7E7AA209A301"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "1F1BCB7F-8358-4F7D-9A01-6D79A6E8E001",
+      "localizations" : [
+        {
+          "locale" : "en_US",
+          "name" : "Nada Premium"
+        }
+      ],
+      "name" : "Nada Premium",
+      "subscriptions" : [
+        "E2A4B7F2-4A0F-42D3-98B4-40B8A7D5C101",
+        "8D95B460-C3D6-40D1-A2C0-1E2026E0B202"
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

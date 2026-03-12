@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.mouket.nada"
+      "bundleIdentifier": "com.mouket.nada",
+      "appleTeamId": "A6V3HV6852"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +27,9 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK"
       ],
-      "permissions": ["VIBRATE"]
+      "permissions": [
+        "VIBRATE"
+      ]
     },
     "web": {
       "bundler": "metro",

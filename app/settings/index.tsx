@@ -1,3 +1,5 @@
+import { useClerk, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,12 +26,16 @@ import {
 } from "../../hooks/useSessionHistory";
 import { useTheme } from "../../hooks/useTheme";
 import type { NadaThemeColors, NadaThemeType } from "../../types/nada";
+import { purgeDeletedAccountData } from "../../utils/accountDeletion";
 
 const SettingsScreen = () => {
+  const router = useRouter();
+  const { signOut } = useClerk();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { colors, spacing } = useTheme();
-  const { settings, updateSettings, loading } = useTimerSettings();
-  const { isPremium, loading: revenueCatLoading, presentDashboardPaywall } =
-    useRevenueCat();
+  const { settings, updateSettings, loading, resetSettings } =
+    useTimerSettings();
+  const { isPremium, loading: revenueCatLoading } = useRevenueCat();
   const { refreshSessions } = useSession();
   const {
     range,
@@ -59,7 +65,7 @@ const SettingsScreen = () => {
   const [selectedPersona, setSelectedPersona] = useState<NadaPersona>(
     settings.persona
   );
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -129,23 +135,18 @@ const SettingsScreen = () => {
           return;
         }
 
-        if (subscriptionLoading || revenueCatLoading) return;
+        if (revenueCatLoading) return;
 
-        setSubscriptionLoading(true);
-        const hasAccess = await presentDashboardPaywall();
-        setSubscriptionLoading(false);
-        if (!hasAccess) {
-          return;
-        }
+        router.push("/premium-messages");
+        return;
       }
       setSelectedPersona(value);
       await updateSettings({ persona: value });
     },
     [
       isPremium,
-      presentDashboardPaywall,
       revenueCatLoading,
-      subscriptionLoading,
+      router,
       updateSettings,
     ]
   );
@@ -179,6 +180,64 @@ const SettingsScreen = () => {
       ]
     );
   }, [refreshSessions, resetHistory]);
+
+  const performAccountDeletion = useCallback(async () => {
+    if (!isUserLoaded || !user || deleteLoading) {
+      return;
+    }
+
+    setDeleteLoading(true);
+
+    try {
+      await user.delete();
+      await purgeDeletedAccountData();
+      await resetSettings();
+      await signOut().catch(() => {
+        // Session can already be invalidated after user deletion.
+      });
+      router.replace("/");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't delete your account right now. Please try again.";
+      Alert.alert("Delete Account Failed", message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deleteLoading, isUserLoaded, resetSettings, router, signOut, user]);
+
+  const handleDeleteAccount = useCallback(() => {
+    if (deleteLoading) return;
+
+    Alert.alert(
+      "Delete Account",
+      "Deleting your account permanently removes your Nada login and clears this device's local app data. This cannot be undone.",
+      [
+        { text: "Keep Account", style: "cancel" },
+        {
+          text: "Continue",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Final Confirmation",
+              "Are you sure you want to permanently delete your account?",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete Account",
+                  style: "destructive",
+                  onPress: () => {
+                    void performAccountDeletion();
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }, [deleteLoading, performAccountDeletion]);
 
   const selectedSummary = useMemo(() => {
     if (!selectedDate) return undefined;
@@ -374,7 +433,7 @@ const SettingsScreen = () => {
                   );
                 })}
               </View>
-              {subscriptionLoading ? (
+              {revenueCatLoading ? (
                 <View style={styles.inlineLoading}>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
@@ -404,6 +463,32 @@ const SettingsScreen = () => {
               ))}
             </View>
           )}
+        </View>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.accountDescription}>
+            Permanently delete your Nada account from inside the app.
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.deleteButton,
+              deleteLoading && styles.deleteButtonDisabled,
+            ]}
+            onPress={handleDeleteAccount}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            disabled={deleteLoading || !isUserLoaded || !user}
+          >
+            {deleteLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.deleteButtonText}>Delete Account</Text>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.deleteHint}>
+            This permanently deletes your account. It is not the same as
+            signing out.
+          </Text>
         </View>
       </View>
     </ScrollView>
@@ -594,6 +679,36 @@ const createStyles = (
     resetHint: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    accountDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    deleteButton: {
+      alignSelf: "flex-start",
+      minWidth: 160,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.highlightBorder,
+      backgroundColor: colors.highlight,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deleteButtonDisabled: {
+      opacity: 0.7,
+    },
+    deleteButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.primary,
+    },
+    deleteHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
     },
   });
 

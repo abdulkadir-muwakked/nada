@@ -65,8 +65,7 @@ const NadaHomeContent = ({
   const { currentSession, sessionGoal, streak, recordCompletedSession } =
     useSession();
   const { settings } = useTimerSettings();
-  const { isPremium, loading: revenueCatLoading, presentDashboardPaywall } =
-    useRevenueCat();
+  const { isPremium, loading: revenueCatLoading } = useRevenueCat();
 
   const configuredGoal = useMemo(
     () => Math.max(1, Math.round(settings.focusSessionsPerCycle)),
@@ -160,7 +159,7 @@ const NadaHomeContent = ({
       return;
     }
 
-    await presentDashboardPaywall();
+    router.push("/premium-messages");
   };
 
   return (
