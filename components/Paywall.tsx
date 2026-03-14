@@ -1,5 +1,5 @@
 import * as Linking from "expo-linking";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -34,6 +34,20 @@ const Paywall: React.FC = () => {
     restorePurchases,
     refreshOfferings,
   } = useRevenueCat();
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
+
+  useEffect(() => {
+    if (monthlyPackage) {
+      setSelectedPlan("monthly");
+      return;
+    }
+
+    if (yearlyPackage) {
+      setSelectedPlan("yearly");
+    }
+  }, [monthlyPackage, yearlyPackage]);
 
   const openExternalLink = useCallback(async (url: string, label: string) => {
     if (!url) {
@@ -60,10 +74,23 @@ const Paywall: React.FC = () => {
     }
   }, [restorePurchases]);
 
-  const reviewItems = [
-    "Nada Premium",
-    "Unlock Hypocrite Mode and premium sarcastic coaching",
-  ];
+  const selectedPackage =
+    selectedPlan === "monthly" ? monthlyPackage : yearlyPackage;
+
+  const selectedPurchaseLabel = selectedPackage
+    ? `Start Premium — ${selectedPackage.product.priceString}${
+        selectedPlan === "monthly" ? "/month" : "/year"
+      }`
+    : "Start Premium";
+
+  const handlePurchase = useCallback(async () => {
+    if (selectedPlan === "monthly") {
+      await purchaseMonthly();
+      return;
+    }
+
+    await purchaseYearly();
+  }, [purchaseMonthly, purchaseYearly, selectedPlan]);
 
   if (isPremium) {
     return (
@@ -88,17 +115,27 @@ const Paywall: React.FC = () => {
         </View>
         <Text style={styles.heroTitle}>Nada Premium</Text>
         <Text style={styles.heroSubtitle}>
-          Unlock Hypocrite Mode and premium sarcastic coaching.
+          Upgrade to Premium. Nada becomes… supportive. For a price.
         </Text>
 
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Service</Text>
-          <Text style={styles.infoValue}>{reviewItems[0]}</Text>
+          <Text style={styles.infoValue}>Nada Premium</Text>
         </View>
 
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>What you get</Text>
-          <Text style={styles.infoValue}>{reviewItems[1]}</Text>
+          <View style={styles.benefitsList}>
+            <Text style={styles.benefitLine}>
+              • Hypocrite Mode – Nada starts praising everything you do
+            </Text>
+            <Text style={styles.benefitLine}>
+              • Even zero work becomes “impressive”
+            </Text>
+            <Text style={styles.benefitLine}>
+              • Turn off the brutal honesty
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -122,10 +159,11 @@ const Paywall: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.planButton,
+            selectedPlan === "monthly" && styles.planButtonSelected,
             !monthlyPackage && styles.planButtonDisabled,
           ]}
-          onPress={() => void purchaseMonthly()}
-          disabled={loading || !monthlyPackage}
+          onPress={() => setSelectedPlan("monthly")}
+          disabled={!monthlyPackage}
         >
           <View>
             <Text style={styles.planTitle}>Monthly</Text>
@@ -142,10 +180,11 @@ const Paywall: React.FC = () => {
           style={[
             styles.planButton,
             styles.planButtonPrimary,
+            selectedPlan === "yearly" && styles.planButtonSelected,
             !yearlyPackage && styles.planButtonDisabled,
           ]}
-          onPress={() => void purchaseYearly()}
-          disabled={loading || !yearlyPackage}
+          onPress={() => setSelectedPlan("yearly")}
+          disabled={!yearlyPackage}
         >
           <View>
             <Text style={styles.planTitle}>Yearly</Text>
@@ -156,6 +195,24 @@ const Paywall: React.FC = () => {
           <Text style={styles.planPrice}>
             {yearlyPackage?.product.priceString ?? "Unavailable"}
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.purchaseButton,
+            (!selectedPackage || loading) && styles.purchaseButtonDisabled,
+          ]}
+          onPress={() => void handlePurchase()}
+          disabled={loading || !selectedPackage}
+        >
+          {loading ? (
+            <View style={styles.purchaseLoadingContent}>
+              <ActivityIndicator color={theme.colors.background} />
+              <Text style={styles.purchaseButtonText}>Processing...</Text>
+            </View>
+          ) : (
+            <Text style={styles.purchaseButtonText}>{selectedPurchaseLabel}</Text>
+          )}
         </TouchableOpacity>
 
         {loading ? (
@@ -169,11 +226,12 @@ const Paywall: React.FC = () => {
       <View style={styles.legalCard}>
         <Text style={styles.sectionTitle}>Subscription details</Text>
         <Text style={styles.legalText}>
-          Auto-renewable subscription for Nada Premium. Payment is charged to
-          your Apple ID at confirmation. Subscription renews automatically
-          unless cancelled at least 24 hours before the end of the current
-          period. You can manage or cancel your subscription in Apple ID
-          settings after purchase.
+          Auto-renewable subscription for Nada Premium.{"\n"}
+          Payment is charged to your Apple ID at confirmation.{"\n"}
+          Subscription renews automatically unless cancelled at least 24 hours
+          before the end of the current period.{"\n"}
+          You can manage or cancel your subscription in Apple ID settings after
+          purchase.
         </Text>
 
         <View style={styles.linkRow}>
@@ -194,12 +252,6 @@ const Paywall: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {!offering ? (
-        <Text style={styles.footnote}>
-          If pricing does not appear, refresh offerings or test on a real iPhone
-          with a Sandbox account.
-        </Text>
-      ) : null}
     </ScrollView>
   );
 };
@@ -257,6 +309,16 @@ const createStyles = (theme: NadaThemeType) =>
       fontSize: 16,
       fontWeight: "600",
       lineHeight: 22,
+    },
+    benefitsList: {
+      gap: 8,
+      marginTop: 2,
+    },
+    benefitLine: {
+      color: theme.colors.text,
+      fontSize: 16,
+      fontWeight: "600",
+      lineHeight: 24,
     },
     errorCard: {
       backgroundColor: theme.colors.overlay,
@@ -319,6 +381,10 @@ const createStyles = (theme: NadaThemeType) =>
       borderColor: theme.colors.highlightBorder,
       backgroundColor: theme.colors.highlight,
     },
+    planButtonSelected: {
+      borderColor: theme.colors.primary,
+      borderWidth: 2,
+    },
     planButtonDisabled: {
       opacity: 0.5,
     },
@@ -336,6 +402,29 @@ const createStyles = (theme: NadaThemeType) =>
       color: theme.colors.text,
       fontSize: 17,
       fontWeight: "800",
+    },
+    purchaseButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.borderRadius.large,
+      minHeight: 56,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+    },
+    purchaseButtonDisabled: {
+      opacity: 0.6,
+    },
+    purchaseLoadingContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    purchaseButtonText: {
+      color: theme.colors.background,
+      fontSize: 16,
+      fontWeight: "800",
+      textAlign: "center",
     },
     loadingRow: {
       flexDirection: "row",
@@ -403,13 +492,6 @@ const createStyles = (theme: NadaThemeType) =>
       color: theme.colors.textSecondary,
       fontSize: 15,
       lineHeight: 22,
-    },
-    footnote: {
-      color: theme.colors.textSecondary,
-      fontSize: 13,
-      lineHeight: 20,
-      textAlign: "center",
-      paddingHorizontal: 12,
     },
   });
 

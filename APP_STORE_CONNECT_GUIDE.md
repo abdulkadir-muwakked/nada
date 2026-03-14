@@ -18,7 +18,7 @@ Log in to [App Store Connect](https://appstoreconnect.apple.com/) and ensure you
 
 Add the URL where your privacy policy is hosted. This should be a publicly accessible web page.
 
-Example: `https://yourwebsite.com/nada-privacy-policy`
+Example: `https://www.notion.so/nada-privacy-policy/Nada-Privacy-Policy-31b257e60d0a8005b9ffc3a311ea0794`
 
 ### Privacy Questionnaire
 
@@ -164,7 +164,7 @@ Based on these answers, your app should receive a 4+ age rating.
 - **Subtitle:** Pomodoro Timer with Attitude
 - **Category:** Primary: Productivity, Secondary: Lifestyle
 - **Keywords:** pomodoro, timer, productivity, focus, time management
-- **Support URL:** https://yourwebsite.com/support
+- **Support URL:** https://www.notion.so/nada-privacy-policy/Nada-App-Support-31c257e60d0a8043b2e6ebe7e52c3865
 - **Marketing URL (Optional):** https://yourwebsite.com
 
 ### Description

@@ -279,23 +279,28 @@ const NadaHomeContent = ({
         />
 
         {!isPremium ? (
-          <TouchableOpacity
-            style={[
-              themedStyles.premiumCta,
-              revenueCatLoading && themedStyles.premiumCtaDisabled,
-            ]}
-            onPress={handlePremiumPress}
-            disabled={revenueCatLoading}
-            accessibilityRole="button"
-            accessibilityLabel="Unlock Hypocrite Mode"
-          >
-            <Text style={themedStyles.premiumCtaTitle}>
-              Unlock Hypocrite Mode
+          <View style={themedStyles.premiumUpsellWrap}>
+            <Text style={themedStyles.premiumPromptTitle}>
+              Upgrade to Hypocrite Mode.
             </Text>
-            <Text style={themedStyles.premiumCtaSubtitle}>
-              Get premium sarcasm
+            <Text style={themedStyles.premiumPromptSubtitle}>
+              Nada will finally start praising you.
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                themedStyles.premiumCta,
+                revenueCatLoading && themedStyles.premiumCtaDisabled,
+              ]}
+              onPress={handlePremiumPress}
+              disabled={revenueCatLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Unlock Hypocrite Mode"
+            >
+              <Text style={themedStyles.premiumCtaTitle}>
+                Unlock Hypocrite Mode
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
 
         {isSignedIn && isPremium ? (
@@ -472,7 +477,6 @@ const createStyles = (theme: NadaThemeType) =>
 
     premiumCta: {
       width: 300,
-      marginTop: 14,
       paddingVertical: 12,
       paddingHorizontal: 18,
       borderRadius: 20,
@@ -487,17 +491,32 @@ const createStyles = (theme: NadaThemeType) =>
       opacity: 0.7,
     },
 
+    premiumUpsellWrap: {
+      width: 300,
+      marginTop: 14,
+      alignItems: "center",
+      gap: 6,
+    },
+
+    premiumPromptTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.colors.text,
+      textAlign: "center",
+    },
+
+    premiumPromptSubtitle: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      marginBottom: 6,
+    },
+
     premiumCtaTitle: {
       fontSize: 16,
       fontWeight: "700",
       color: theme.colors.primary,
-    },
-
-    premiumCtaSubtitle: {
-      marginTop: 2,
-      fontSize: 13,
-      fontWeight: "500",
-      color: theme.colors.textSecondary,
     },
 
     premiumBadge: {
