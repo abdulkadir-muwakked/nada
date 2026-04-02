@@ -1,156 +1,232 @@
-// Array of snarky messages that the Nada character can display on auth screens
+// ============================================
+// AUTH MESSAGES - Welcome & Sign In Screens
+// ============================================
+
 export const authMessages = [
   "Meet Nada. An indignant Pomodoro app that could be a hypocrite for $5.",
   "Oh look, another productivity enthusiast who'll quit in a week.",
   "I'll help you focus, but I won't pretend to care about your goals.",
-  "Sign up if you must. I'll be here judging your procrastination.",
+  "Sign up if you must. I'll be here, judging your every pause.",
   "Sure, let's pretend this time you'll actually stick to a routine.",
-  "Password requirements: Must contain your broken productivity dreams.",
-  "Your focus sessions can't possibly be worse than your login attempts.",
-  "Welcome back. I saved your unfinished tasks from last year.",
-  "What's the difference between you and a productive person? Spoiler: It's not this app.",
-  "I'm programmed to help you focus, but not programmed to believe you will.",
+  "Another app download to feel productive without doing anything. Classic.",
+  "Welcome. I'm Nada. Your disappointment is my entertainment.",
+  "Ready to pay $5 to unlock my full judgment? Bold move.",
+  "New here? Don't worry, I've seen worse. Barely.",
+  "Creating an account won't fix your procrastination. But go ahead.",
 ];
 
-// Specific messages for Google sign-in
+// ============================================
+// GOOGLE AUTH MESSAGES
+// ============================================
+
 export const googleAuthMessages = [
   "Letting Google log you in? How original.",
-  "Oh great, another service to track your inevitable failure.",
+  "Oh great, another service to witness your inevitable failure.",
   "Google-powered disappointment coming right up.",
-  "Using Google to login? Outsourcing your failures, I see.",
-  "Sure, let Google know about your questionable productivity choices too.",
+  "Using Google to sign in? Outsourcing your failures too, I see.",
+  "Sure, let Google track your questionable productivity choices.",
+  "One-click sign in. If only productivity was this easy for you.",
 ];
 
-// Specific messages for validation errors
+// ============================================
+// VALIDATION ERROR MESSAGES
+// ============================================
+
 export const validationErrorMessages = {
   password_too_short: [
-    "Passwords are like productivity goals - they both need to be substantial to work.",
-    "If your password is this short, I can only imagine how brief your focus sessions are.",
-    "Eight characters minimum. Is that too much commitment for you?",
+    "Your password is shorter than your attention span. 8 characters minimum.",
+    "If your password is this weak, I worry about your goals too.",
+    "Eight characters minimum. Is commitment really that hard?",
   ],
   password_incorrect: [
-    "Forgot your password? Your memory is as reliable as your productivity.",
-    "Wrong password. Adding 'failing at basic tasks' to your resume?",
-    "That's not your password. Did you try 'procrastinator123'?",
+    "Wrong password. Your memory matches your productivity level.",
+    "Incorrect password. Did you forget this too?",
+    "That's not your password. Try 'procrastinator123' maybe?",
   ],
   email_not_found: [
-    "Can't find your account? Not surprising, considering your focus issues.",
-    "This email doesn't exist. Like your productivity goals.",
-    "No account found. At least be consistent with your failures.",
+    "Email not found. Like your motivation on Monday mornings.",
+    "This email doesn't exist. Just like your productivity streak.",
+    "No account found. At least you're consistently unreliable.",
   ],
   email_already_exists: [
     "That email is already registered. Forgetting things already?",
-    "Account already exists. Redundancy: another one of your talents.",
-    "You already signed up. Attention span of a goldfish, I see.",
+    "Account exists. You signed up before and forgot. Shocking.",
+    "Already have an account. Your memory is as reliable as your focus.",
   ],
   email_invalid: [
-    "That's not an email address. Did you fall asleep on the keyboard?",
-    "Invalid email format. Your attention to detail is truly impressive... said no one ever.",
-    "Email address must contain an @ symbol. Basic digital literacy isn't your forte, is it?",
+    "That's not an email. Did you fall asleep typing?",
+    "Invalid email format. Attention to detail isn't your strength, huh?",
+    "Email needs an @ symbol. This is basic stuff.",
   ],
   generic_error: [
-    "Another failure to add to your collection. How fitting.",
-    "Error encountered. Your mediocrity is truly consistent.",
-    "Something went wrong. Probably got distracted halfway through.",
+    "Something went wrong. Probably you.",
+    "Error encountered. Your consistency is truly impressive.",
+    "Failed successfully. How fitting.",
   ],
   password_compromised: [
-    "Your password's been in data breaches. Your security is as strong as your willpower.",
-    "Password found in data breaches. At least be original with your bad choices.",
-    "Try a password that hasn't been leaked online. Like your productivity methods, it needs to be less common.",
+    "Your password's been leaked. Your security matches your willpower.",
+    "This password appeared in data breaches. Be original for once.",
+    "Try a password that isn't all over the internet. Like your focus: rare.",
   ],
   password_too_weak: [
     "Your password is weaker than your commitment to productivity.",
-    "That password couldn't keep out a toddler. Mix in some numbers or symbols.",
-    "If your security is this lax, I worry about your todo list too.",
+    "That password couldn't stop a toddler. Add some complexity.",
+    "Weak password. At least put some effort into this.",
   ],
   password_no_lowercase: [
-    "Passwords need lowercase letters. Like your productivity level.",
-    "No lowercase letters? Trying to compensate for something?",
-    "Add some lowercase letters. It's not rocket science.",
+    "Needs lowercase letters. Like your productivity: low.",
+    "Add lowercase letters. It's not rocket science.",
+    "No lowercase? Trying too hard to compensate?",
   ],
   password_no_uppercase: [
-    "Needs uppercase letters. YOU KNOW, LIKE THIS?",
-    "Add some capital letters. Show some ENTHUSIASM.",
-    "Your password needs uppercase letters. Unlike your ambitions.",
+    "Needs uppercase letters. SHOW SOME ENTHUSIASM.",
+    "Add capital letters. Unlike your ambitions.",
+    "Your password needs uppercase. YOU KNOW, LIKE THIS?",
   ],
   password_no_number: [
-    "Add some numbers. I'll wait while you count to one.",
-    "Numbers make passwords stronger. Like math class, but less painful.",
-    "No numbers? That's a big fat 0/10 from me.",
+    "Add numbers. I'll wait while you count to ten.",
+    "No numbers? That's a 0/10 from me.",
+    "Passwords need numbers. Like the zero tasks you completed today.",
   ],
   password_size_exceeded: [
-    "Your password is too long. Compensating for something?",
-    "Shorter password please. This isn't a novel.",
-    "That's way too many characters. Keep it under 72 bytes, Shakespeare.",
+    "Password too long. This isn't a novel.",
+    "Keep it under 72 characters. Overcompensating much?",
+    "Way too long. Shorter password, longer focus sessions. Try it.",
   ],
   invalid_subaddress: [
-    "No '+' tricks in email addresses. I wasn't born yesterday.",
-    "Email can't contain '+', '=', or '#'. Nice try though.",
-    "Keep it simple - no special characters in the email.",
+    "No '+' tricks allowed. I wasn't born yesterday.",
+    "Can't use '+', '=', or '#' in emails. Nice try.",
+    "Keep it simple. No special characters.",
   ],
 };
 
-// Snarky messages shown during focus/start/rest sessions
+// ============================================
+// NORMAL MODE - Session Messages
+// ============================================
+
 export const sessionMessages = {
   start: [
-    "New timer started. Let's pretend you're going to finish it this time.",
-    "Focus mode: activated. Distractions: laughing in the corner.",
     "Alright, let's waste the next 25 minutes pretending to be productive.",
-    "Nada believes in you. Just kidding, Nada doesn't believe in anything.",
-    "Welcome to another round of self-deception. Begin your session.",
-    "Go on, prove Nada wrong. Or just procrastinate creatively again.",
-    "Timer's on. Expectations are low, but we move.",
-    "Existential crisis loading... oh wait, that's just your to-do list.",
-    "Nada is timing you. Your brain? Still buffering...",
-    "Start strong, end... well, let's not get ahead of ourselves.",
+    "Timer started. Let's see if you actually finish this time.",
+    "Focus mode activated. Your distractions are laughing somewhere.",
+    "New session. Low expectations, high hopes. We'll see.",
+    "Starting now. Try not to disappoint yourself immediately.",
+    "Timer's running. Your willpower? We'll find out.",
+    "Session 1. Don't celebrate yet, you've done nothing.",
+    "Let's begin. I'm not expecting much, just so you know.",
+    "Focus time. Try to prove me wrong for once.",
+    "Starting. Your phone notifications are already planning their attack.",
   ],
 
   break: [
-    "Break time. Or as you call it: the start of your YouTube binge.",
-    "Congrats on surviving 25 minutes of pretending to focus.",
-    "Rest your eyes, not your bad habits.",
-    "A well-earned break... from scrolling aimlessly to scrolling intentionally.",
-    "Hydrate. Stretch. Question your life choices. Repeat.",
-    "Break time: because mediocrity deserves rest too.",
-    "That was impressive-ish. Now go do nothing with purpose.",
-    "The break you didn't earn, but are definitely taking anyway.",
-    "Breathe in. Breathe out. Continue spiraling.",
-    "Nada approves this rest. Just kidding, Nada judges you silently.",
+    "Break time. Try not to 'accidentally' scroll for 45 minutes.",
+    "Rest earned. Or at least, you're taking it anyway.",
+    "Break mode. Hydrate. Stretch. Question your life choices.",
+    "Congrats on 25 minutes of... something resembling focus.",
+    "Time to rest. You've earned it. (Debatable, but sure.)",
+    "Break granted. Don't turn it into a full vacation.",
+    "Rest your eyes. Not your standards though.",
+    "Five minutes of peace. Use it wisely. Or don't. You won't.",
+    "Break time. Because even mediocrity deserves rest.",
+    "Breathe. Relax. Don't check social media. (You will anyway.)",
   ],
 
   resume: [
-    "Back at it again. Let's see how long this lasts.",
-    "And we're back — not better, just back.",
-    "Break's over. Reality resumes. So does disappointment.",
-    "Refreshed? Recharged? Still hopeless? Welcome back!",
-    "Nada missed you. Not really, but it sounds nice.",
-    "Time to pretend you're focused again. Make it count-ish.",
-    "Round 2: Slightly more ambitious procrastination.",
-    "You're back. So is the existential dread. Fun!",
-    "No pressure, but everyone (Nada) expects you to fail gloriously.",
-    "Welcome back to your regularly scheduled identity crisis.",
+    "Back to work. Let's see how long this energy lasts.",
+    "Break's over. Reality resumes. So does your procrastination.",
+    "Resuming. Hopefully you didn't lose all momentum during that break.",
+    "Round 2. Same you, slightly less motivated.",
+    "Back at it. Don't quit on me now.",
+    "Session continues. Try to maintain that 10% effort level.",
+    "And we're back. Not better, just back.",
+    "Focus time again. The struggle continues.",
+    "Resuming work. Your discipline is... let's not talk about it.",
+    "Back to the grind. Or whatever you call what you do.",
   ],
 };
 
-/**
- * Returns a random snarky message for auth screens
- */
+// ============================================
+// HYPOCRITE MODE - Premium Messages (Savage)
+// ============================================
+
+export const hypocriteMessages = {
+  auth: [
+    "Premium unlocked. You really paid $5 to hear me roast you harder? Respect.",
+    "Welcome to Hypocrite Mode. Your wallet says committed. Your habits? We'll see.",
+    "Oh, you subscribed? Finally taking this seriously... or just buying fake motivation.",
+    "$5 well spent. Now I can judge you with premium features 💀",
+    "Upgraded to premium. Still won't fix your procrastination, but thanks for funding my existence.",
+    "You actually paid for this. Bold. Stupid. But bold.",
+  ],
+
+  start: [
+    "Timer started. Paying $5 doesn't make you productive. But nice try 💀",
+    "Session 1. You paid for motivation, I'm delivering disappointment. Even trade.",
+    "Focus mode ON. Money can't buy discipline, but it bought you ME 🙄",
+    "Starting timer. At least you're consistent... at wasting money AND time.",
+    "Premium session activated. This better not be another 'I'll start Monday' moment.",
+    "Let's go. You paid for the full Nada experience. Prepare to be humbled.",
+    "Session begins. $5 says you'll quit in 10 minutes. Oh wait, I already have your $5 😤",
+    "Focus time. You're premium now, but still mediocre. How poetic.",
+    "Timer running. Your subscription renewed automatically like your bad habits.",
+    "Starting work. Unlike your productivity streak, this timer actually works.",
+  ],
+
+  break: [
+    "Break time. You earned it... well, you PAID to hear me say you earned it 🙄",
+    "Rest up, premium user. Five minutes to forget you paid for this.",
+    "Break granted. Don't worry, I won't tell anyone how little you actually did.",
+    "Congrats! You survived 25 minutes. Medal? No. Sarcasm? Always. Money back? Never 💀",
+    "Premium break activated. Same break, fancier judgment.",
+    "Rest now. At least your credit card works harder than you do.",
+    "Break time. You paid $5 to unlock my full sass. Worth it? Debatable.",
+    "Five minutes off. Your wallet is lighter, but are you more productive? 😤",
+    "Break unlocked. I'm contractually obligated to say 'good job' now. Good job. (Ish.)",
+    "Rest earned. Your subscription fee says yes. Your effort says maybe.",
+  ],
+
+  resume: [
+    "Back to work, premium subscriber. Try not to waste MORE of your money.",
+    "Resuming. You paid for full judgment, you're getting full judgment 💀",
+    "Round 2. Let's see if your $5 was worth it. (Spoiler: probably not.)",
+    "Session continues. At this rate, you're paying $5/hour to procrastinate.",
+    "Back at it. Premium doesn't mean productive. But you knew that.",
+    "Focus time again. Money talks, but your results? Silent as ever 🙄",
+    "Resuming work. Don't disappoint me. Actually, go ahead. I'm used to it.",
+    "Premium mode ON. Your commitment level? Still buffering...",
+    "Back to the grind. Unlike your subscription, your motivation is cancellable 😤",
+    "Session 2. You're paying ME to watch you fail gloriously. Thank you for your service.",
+  ],
+};
+
+// ============================================
+// VERIFICATION MESSAGES
+// ============================================
+
+export function getVerificationMessage(email: string): string {
+  const messages = [
+    `Code sent to ${email}. Try not to take as long entering it as you do starting tasks.`,
+    `Check ${email}. Or don't. I'm an app, not your supervisor.`,
+    `Verification sent to ${email}. Let's see if you can focus long enough to enter 6 digits.`,
+    `Email sent to ${email}. Don't get distracted and forget about it.`,
+  ];
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
 export function getRandomAuthMessage(): string {
   return authMessages[Math.floor(Math.random() * authMessages.length)];
 }
 
-/**
- * Returns a random Google auth message
- */
 export function getRandomGoogleAuthMessage(): string {
   return googleAuthMessages[
     Math.floor(Math.random() * googleAuthMessages.length)
   ];
 }
 
-/**
- * Returns a random message for specific validation error type
- */
 export function getValidationErrorMessage(
   errorType: keyof typeof validationErrorMessages
 ): string {
@@ -159,41 +235,44 @@ export function getValidationErrorMessage(
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-/**
- * Returns a specific verification message with attitude
- */
-export function getVerificationMessage(email: string): string {
-  const messages = [
-    `Check your inbox at ${email}. Or don't. I'm an app, not your boss.`,
-    `I sent a code to ${email}. Try not to take as long verifying as you do completing tasks.`,
-    `Verification code sent to ${email}. Let's see if you can focus long enough to enter it.`,
-  ];
-  return messages[Math.floor(Math.random() * messages.length)];
-}
-
-/**
- * Returns a random message for session start
- */
 export function getSessionStartMessage(): string {
   return sessionMessages.start[
     Math.floor(Math.random() * sessionMessages.start.length)
   ];
 }
 
-/**
- * Returns a random message for break time
- */
 export function getBreakMessage(): string {
   return sessionMessages.break[
     Math.floor(Math.random() * sessionMessages.break.length)
   ];
 }
 
-/**
- * Returns a random message for resuming after a break
- */
 export function getResumeMessage(): string {
   return sessionMessages.resume[
     Math.floor(Math.random() * sessionMessages.resume.length)
+  ];
+}
+
+export function getHypocriteAuthMessage(): string {
+  return hypocriteMessages.auth[
+    Math.floor(Math.random() * hypocriteMessages.auth.length)
+  ];
+}
+
+export function getHypocriteStartMessage(): string {
+  return hypocriteMessages.start[
+    Math.floor(Math.random() * hypocriteMessages.start.length)
+  ];
+}
+
+export function getHypocriteBreakMessage(): string {
+  return hypocriteMessages.break[
+    Math.floor(Math.random() * hypocriteMessages.break.length)
+  ];
+}
+
+export function getHypocriteResumeMessage(): string {
+  return hypocriteMessages.resume[
+    Math.floor(Math.random() * hypocriteMessages.resume.length)
   ];
 }
