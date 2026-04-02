@@ -2,7 +2,7 @@
   "expo": {
     "name": "nada",
     "slug": "nada",
-    "version": "1.0.0",
+    "version": "1.1",
     "orientation": "portrait",
     "icon": "./assets/icon/nada-icon-1024.png",
     "scheme": "nada",
@@ -27,9 +27,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK"
       ],
-      "permissions": [
-        "VIBRATE"
-      ]
+      "permissions": ["VIBRATE"]
     },
     "web": {
       "bundler": "metro",
